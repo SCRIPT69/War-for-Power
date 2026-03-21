@@ -13,12 +13,12 @@ public class GameFieldPositionGenerator {
 
     public double generatePosXForTile(int rowIndex, int tileIndex) {
         int rowDepth = CENTER_ROW_INDEX - Math.abs(CENTER_ROW_INDEX - rowIndex);
-        double differenceX = rowDepth * this.ROW_OFFSET_X;
+        double differenceX = rowDepth * ROW_OFFSET_X;
 
-        return this.START_X - differenceX + this.TILE_STEP_X *tileIndex;
+        return START_X - differenceX + TILE_STEP_X *tileIndex;
     }
 
     public double generatePosYForTile(int rowIndex) {
-        return this.START_Y + rowIndex*this.ROW_STEP_Y;
+        return START_Y + rowIndex*ROW_STEP_Y;
     }
 }
