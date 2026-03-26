@@ -1,7 +1,6 @@
 package cz.cvut.fel.pjv.warforpower.controller;
 
 import cz.cvut.fel.pjv.warforpower.model.game.Game;
-import cz.cvut.fel.pjv.warforpower.view.SceneManager;
 import cz.cvut.fel.pjv.warforpower.view.game.GameView;
 import javafx.scene.Parent;
 
@@ -19,6 +18,7 @@ public class GameController {
     }
 
     public void startNewGame() {
-
+        game.startNewGame();
+        gameView.renderMap(game.getGameMap());
     }
 }

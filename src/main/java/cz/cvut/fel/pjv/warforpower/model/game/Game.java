@@ -1,6 +1,8 @@
 package cz.cvut.fel.pjv.warforpower.model.game;
 
-import cz.cvut.fel.pjv.warforpower.model.Player;
+import cz.cvut.fel.pjv.warforpower.model.map.GameMap;
+import cz.cvut.fel.pjv.warforpower.model.players.Player;
+import cz.cvut.fel.pjv.warforpower.model.players.PlayersFactory;
 
 public class Game {
     private static final int MIN_PLAYERS = 2;
@@ -8,6 +10,7 @@ public class Game {
 
     private final int playersNumber;
     private final Player[] players;
+    private final GameMap gameMap;
 
     public int getPlayersNumber() {
         return playersNumber;
@@ -20,14 +23,15 @@ public class Game {
             );
         }
         this.playersNumber = playersNumber;
-        this.players = new Player[this.playersNumber];
+        this.players = PlayersFactory.createPlayers(playersNumber);
+        this.gameMap = new GameMap();
+    }
+
+    public GameMap getGameMap() {
+        return gameMap;
     }
 
     public void startNewGame() {
-
-    }
-
-    private void generateMap() {
-
+        gameMap.generateMap(players);
     }
 }

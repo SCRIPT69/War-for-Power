@@ -1,6 +1,6 @@
 package cz.cvut.fel.pjv.warforpower.model.tiles;
 
-import cz.cvut.fel.pjv.warforpower.model.Player;
+import cz.cvut.fel.pjv.warforpower.model.players.Player;
 
 public interface Ownable {
     Player getOwner();
