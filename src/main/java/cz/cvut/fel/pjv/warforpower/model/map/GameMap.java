@@ -1,7 +1,9 @@
 package cz.cvut.fel.pjv.warforpower.model.map;
 
+import cz.cvut.fel.pjv.warforpower.model.game.Game;
 import cz.cvut.fel.pjv.warforpower.model.players.Player;
 import cz.cvut.fel.pjv.warforpower.model.tiles.*;
+import cz.cvut.fel.pjv.warforpower.model.units.Unit;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -72,6 +74,36 @@ public class GameMap {
                 && tileIndex >= 0 && tileIndex < ROW_LENGTHS[rowIndex];
     }
 
+    public int countUnitsOfPlayer(Player player) {
+        int count = 0;
+
+        for (List<HexTile> row : map) {
+            for (HexTile tile : row) {
+                if (tile instanceof OccupiableTile occupiableTile) {
+                    for (Unit unit : occupiableTile.getStandingUnits()) {
+                        if (unit.getOwner().equals(player)) {
+                            count++;
+                        }
+                    }
+                }
+            }
+        }
+
+        return count;
+    }
+
+    public List<BaseTile> getAllBases() {
+        List<BaseTile> bases = new ArrayList<>();
+        for (List<HexTile> row : map) {
+            for (HexTile tile : row) {
+                if (tile instanceof BaseTile baseTile) {
+                    bases.add(baseTile);
+                }
+            }
+        }
+        return bases;
+    }
+
     private void setBasesAndCities(Player[] players) {
         if (players.length < 2 || players.length > 4) {
             throw new IllegalArgumentException("Invalid number of players");
@@ -89,6 +121,7 @@ public class GameMap {
         //setting bases
         for (int i = 0; i < players.length; i++) {
             setTile(basesCoords[i], new BaseTile(basesCoords[i], players[i]));
+            players[i].increaseBasesCount();
         }
 
         //setting cities

@@ -6,6 +6,13 @@ public abstract class HexTile {
     private final HexTileType tileType;
 
     public HexTile(HexTileCoords tileCoords, HexTileType tileType) {
+        if (tileCoords == null) {
+            throw new IllegalArgumentException("tileCoords cannot be null.");
+        }
+        if (tileType == null) {
+            throw new IllegalArgumentException("tileType cannot be null.");
+        }
+
         this.tileCoords = tileCoords;
         this.tileType = tileType;
     }

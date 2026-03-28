@@ -1,5 +1,7 @@
 package cz.cvut.fel.pjv.warforpower.model.players;
 
+import cz.cvut.fel.pjv.warforpower.model.game.Game;
+
 import java.util.Arrays;
 import java.util.Collections;
 
@@ -15,7 +17,7 @@ public final class PlayersFactory {
         }
 
         for (int i = 0; i < playersNumber; i++) {
-            players[i] = new Player("Player " + (i+1), playerColors[i]);
+            players[i] = new Player("Player " + (i+1), playerColors[i], Game.START_MONEY_AMOUNT);
         }
 
         //Randomly shuffling players order
