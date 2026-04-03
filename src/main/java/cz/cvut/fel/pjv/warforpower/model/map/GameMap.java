@@ -1,6 +1,5 @@
 package cz.cvut.fel.pjv.warforpower.model.map;
 
-import cz.cvut.fel.pjv.warforpower.model.game.Game;
 import cz.cvut.fel.pjv.warforpower.model.players.Player;
 import cz.cvut.fel.pjv.warforpower.model.tiles.*;
 import cz.cvut.fel.pjv.warforpower.model.units.Unit;
@@ -102,6 +101,52 @@ public class GameMap {
             }
         }
         return bases;
+    }
+
+    public List<BaseTile> getBasesOfPlayer(Player player) {
+        List<BaseTile> basesOfPlayer = new ArrayList<>();
+        for (List<HexTile> row : map) {
+            for (HexTile tile : row) {
+                if (tile instanceof BaseTile baseTile && baseTile.getOwner() == player) {
+                    basesOfPlayer.add(baseTile);
+                }
+            }
+        }
+        return basesOfPlayer;
+    }
+
+    public List<OccupiableTile> getNeighbourOccupiableTiles(HexTileCoords currentTileCoords) {
+        List<OccupiableTile> neighbours = new ArrayList<>();
+
+        int rowIndex = currentTileCoords.rowIndex();
+        int tileIndex = currentTileCoords.tileIndex();
+
+        // same row
+        addOccupiableTileIfValid(neighbours, new HexTileCoords(rowIndex, tileIndex - 1));
+        addOccupiableTileIfValid(neighbours, new HexTileCoords(rowIndex, tileIndex + 1));
+
+        if (rowIndex <= 4) {
+            addOccupiableTileIfValid(neighbours, new HexTileCoords(rowIndex - 1, tileIndex));
+            addOccupiableTileIfValid(neighbours, new HexTileCoords(rowIndex - 1, tileIndex + 1));
+            addOccupiableTileIfValid(neighbours, new HexTileCoords(rowIndex + 1, tileIndex));
+            addOccupiableTileIfValid(neighbours, new HexTileCoords(rowIndex + 1, tileIndex + 1));
+        } else {
+            addOccupiableTileIfValid(neighbours, new HexTileCoords(rowIndex - 1, tileIndex));
+            addOccupiableTileIfValid(neighbours, new HexTileCoords(rowIndex - 1, tileIndex + 1));
+            addOccupiableTileIfValid(neighbours, new HexTileCoords(rowIndex + 1, tileIndex - 1));
+            addOccupiableTileIfValid(neighbours, new HexTileCoords(rowIndex + 1, tileIndex));
+        }
+
+        return neighbours;
+    }
+    private void addOccupiableTileIfValid(List<OccupiableTile> tiles, HexTileCoords coords) {
+        if (!isValidCoords(coords)) {
+            return;
+        }
+
+        if (getTile(coords) instanceof OccupiableTile occupiableTile) {
+            tiles.add(occupiableTile);
+        }
     }
 
     private void setBasesAndCities(Player[] players) {

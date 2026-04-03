@@ -1,8 +1,14 @@
 package cz.cvut.fel.pjv.warforpower.model.units;
 
+import cz.cvut.fel.pjv.warforpower.model.map.GameMap;
 import cz.cvut.fel.pjv.warforpower.model.players.Player;
+import cz.cvut.fel.pjv.warforpower.model.tiles.HexTile;
+import cz.cvut.fel.pjv.warforpower.model.tiles.HexTileCoords;
 import cz.cvut.fel.pjv.warforpower.model.tiles.OccupiableTile;
 import cz.cvut.fel.pjv.warforpower.model.tiles.TerrainType;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class Unit {
     private final Player owner;
