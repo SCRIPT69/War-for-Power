@@ -10,11 +10,13 @@ import cz.cvut.fel.pjv.warforpower.model.units.UnitType;
 import java.util.ArrayList;
 import java.util.List;
 
+
 public class Game {
     public static final int MIN_PLAYERS = 2;
     public static final int MAX_PLAYERS = 4;
     public static final int START_MONEY_AMOUNT = 100;
     public static final int PRICE_FOR_TILE = 50;
+    public static final int MONEY_PER_BASE = 50;
 
     private final int playersNumber;
     private final Player[] players;
@@ -95,7 +97,8 @@ public class Game {
 
         Unit newUnit = new Unit(unitType, owner, baseTile);
         baseTile.addUnit(newUnit);
-        baseTile.markUnitBoughtThisRound();
+        newUnit.markActedThisRound(); // new unit can not act this round
+        baseTile.markUnitBoughtThisRound(); // limit for buying new units on one base
         owner.decreaseMoney(unitType.getPrice());
         return newUnit;
     }
@@ -109,6 +112,9 @@ public class Game {
         }
         if (unit.getOwner() != currentPlayer) {
             throw new IllegalStateException("Only current player's units can be queried for movement.");
+        }
+        if (unit.hasActedThisRound()) {
+            throw new IllegalStateException("Unit has already acted this round.");
         }
         OccupiableTile currentTile = unit.getOccupiedTile();
 
@@ -142,12 +148,16 @@ public class Game {
         if (unit.getOwner() != currentPlayer) {
             throw new IllegalStateException("Only current player's units can be moved.");
         }
+        if (unit.hasActedThisRound()) {
+            throw new IllegalStateException("Unit has already acted this round.");
+        }
         if (!getMovementOptions(unit).contains(targetTile)) {
             throw new IllegalStateException("Invalid tile for movement.");
         }
         OccupiableTile oldTile = unit.getOccupiedTile();
         oldTile.removeUnit(unit);
         targetTile.addUnit(unit);
+        unit.markActedThisRound();
         unit.setOccupiedTile(targetTile);
     }
 
@@ -218,8 +228,21 @@ public class Game {
         for (BaseTile base : gameMap.getAllBases()) {
             base.resetRoundPurchaseState();
         }
+        increasePlayersMoneyForBases();
 
         currentPlayerIndex = 0;
         currentRound++;
+    }
+    private void increasePlayersMoneyForBases() {
+        for (Player player : players) {
+            if (player.isEliminated()) {
+                continue;
+            }
+
+            int basesCount = player.getBasesCount();
+            if (basesCount > 0) {
+                player.increaseMoney(basesCount * MONEY_PER_BASE);
+            }
+        }
     }
 }

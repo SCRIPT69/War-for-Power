@@ -17,6 +17,7 @@ public class Unit {
     private static final int TERRAIN_DISADVANTAGE_PENALTY = -2;
 
     private final UnitType unitType;
+    private boolean actedThisRound = false;
 
     public Unit(UnitType unitType, Player owner, OccupiableTile occupiedTile) {
         if (unitType == null) {
@@ -69,5 +70,20 @@ public class Unit {
             return TERRAIN_DISADVANTAGE_PENALTY;
         }
         return 0;
+    }
+
+    public boolean hasActedThisRound() {
+        return actedThisRound;
+    }
+
+    public void markActedThisRound() {
+        if (actedThisRound) {
+            throw new IllegalStateException("Unit has already acted this round.");
+        }
+        actedThisRound = true;
+    }
+
+    public void resetRoundActionState() {
+        actedThisRound = false;
     }
 }
