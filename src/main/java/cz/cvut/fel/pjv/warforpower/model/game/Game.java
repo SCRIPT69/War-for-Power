@@ -9,6 +9,7 @@ import cz.cvut.fel.pjv.warforpower.model.units.UnitType;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
 
 /**
  * Central class coordinating the main game rules, round progression
@@ -20,6 +21,8 @@ public class Game {
     public static final int START_MONEY_AMOUNT = 100;
     public static final int PRICE_FOR_TILE = 50;
     public static final int MONEY_PER_BASE = 50;
+
+    private static final Logger LOGGER = Logger.getLogger(Game.class.getName());
 
     private final int playersNumber;
     private final Player[] players;
