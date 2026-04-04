@@ -1,5 +1,9 @@
 package cz.cvut.fel.pjv.warforpower.model.players;
 
+/**
+ * Represents a player in the game, including identity, economy,
+ * number of owned bases and elimination status.
+ */
 public class Player {
     private final String name;
     private final PlayerColor color;
@@ -39,6 +43,12 @@ public class Player {
         return basesCount >= 2 ? 8 : 4;
     }
 
+    /**
+     * Increases the player's money by the specified amount.
+     *
+     * @param amount amount to add
+     * @throws IllegalStateException if the amount is invalid
+     */
     public void increaseMoney(int amount) {
         if (amount < 1) {
             throw new IllegalStateException("The amount can not be less than 1.");
@@ -46,6 +56,12 @@ public class Player {
         money += amount;
     }
 
+    /**
+     * Decreases the player's money by the specified amount.
+     *
+     * @param amount amount to subtract
+     * @throws IllegalStateException if the amount is invalid
+     */
     public void decreaseMoney(int amount) {
         if (amount < 1) {
             throw new IllegalArgumentException("The amount can not be less than 1.");
@@ -56,14 +72,27 @@ public class Player {
         money -= amount;
     }
 
+    /**
+     * Returns the number of bases currently controlled by the player.
+     *
+     * @return number of bases
+     */
     public int getBasesCount() {
         return basesCount;
     }
 
+    /**
+     * Increases the number of controlled bases by one.
+     */
     public void increaseBasesCount() {
         basesCount++;
     }
 
+    /**
+     * Decreases the number of controlled bases by one.
+     *
+     * @throws IllegalStateException if the player does not own any bases
+     */
     public void decreaseBasesCount() {
         if (basesCount < 1) {
             throw new IllegalStateException("The player already has no bases.");

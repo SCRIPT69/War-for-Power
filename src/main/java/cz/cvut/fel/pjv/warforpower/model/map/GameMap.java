@@ -9,6 +9,10 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * Represents the main game map, stores all map tiles
+ * and provides map-related queries and helper methods.
+ */
 public class GameMap {
     private final List<List<HexTile>> map;
     private static final int[] ROW_LENGTHS = {5, 6, 7, 8, 9, 8, 7, 6, 5};
@@ -19,6 +23,12 @@ public class GameMap {
         this.map = new ArrayList<>();
     }
 
+    /**
+     * Generates a new game map for the given players.
+     * The generation includes bases, cities and terrain tiles.
+     *
+     * @param players players participating in the game
+     */
     public void generateMap(Player[] players) {
         initializeEmptyMap();
         setBasesAndCities(players);
@@ -44,6 +54,13 @@ public class GameMap {
         map.get(tileCoords.rowIndex()).set(tileCoords.tileIndex(), tile);
     }
 
+    /**
+     * Returns the tile at the specified coordinates.
+     *
+     * @param tileCoords coordinates of the tile
+     * @return tile located at the given coordinates
+     * @throws IllegalArgumentException if the coordinates are invalid
+     */
     public HexTile getTile(HexTileCoords tileCoords) {
         validateCoords(tileCoords);
         return map.get(tileCoords.rowIndex()).get(tileCoords.tileIndex());
@@ -66,6 +83,12 @@ public class GameMap {
         }
     }
 
+    /**
+     * Checks whether the given coordinates exist on the map.
+     *
+     * @param tileCoords coordinates to validate
+     * @return true if the coordinates are valid
+     */
     public boolean isValidCoords(HexTileCoords tileCoords) {
         int rowIndex = tileCoords.rowIndex();
         int tileIndex = tileCoords.tileIndex();
@@ -73,6 +96,12 @@ public class GameMap {
                 && tileIndex >= 0 && tileIndex < ROW_LENGTHS[rowIndex];
     }
 
+    /**
+     * Counts all units on the map belonging to the specified player.
+     *
+     * @param player player whose units should be counted
+     * @return number of units owned by the player
+     */
     public int countUnitsOfPlayer(Player player) {
         int count = 0;
 
@@ -91,6 +120,11 @@ public class GameMap {
         return count;
     }
 
+    /**
+     * Returns all base tiles currently present on the map.
+     *
+     * @return list of all bases
+     */
     public List<BaseTile> getAllBases() {
         List<BaseTile> bases = new ArrayList<>();
         for (List<HexTile> row : map) {
@@ -103,6 +137,12 @@ public class GameMap {
         return bases;
     }
 
+    /**
+     * Returns all bases owned by the given player.
+     *
+     * @param player owner of requested bases
+     * @return list of player's bases
+     */
     public List<BaseTile> getBasesOfPlayer(Player player) {
         List<BaseTile> basesOfPlayer = new ArrayList<>();
         for (List<HexTile> row : map) {
@@ -115,6 +155,12 @@ public class GameMap {
         return basesOfPlayer;
     }
 
+    /**
+     * Returns all neighbouring occupiable tiles of the specified tile coordinates.
+     *
+     * @param currentTileCoords coordinates of the reference tile
+     * @return list of neighbouring occupiable tiles
+     */
     public List<OccupiableTile> getNeighbourOccupiableTiles(HexTileCoords currentTileCoords) {
         List<OccupiableTile> neighbours = new ArrayList<>();
 
@@ -139,6 +185,13 @@ public class GameMap {
 
         return neighbours;
     }
+    /**
+     * Adds the tile at the given coordinates to the provided list
+     * if the coordinates are valid and the tile is occupiable.
+     *
+     * @param tiles output list of occupiable tiles
+     * @param coords coordinates to inspect
+     */
     private void addOccupiableTileIfValid(List<OccupiableTile> tiles, HexTileCoords coords) {
         if (!isValidCoords(coords)) {
             return;
@@ -149,6 +202,11 @@ public class GameMap {
         }
     }
 
+    /**
+     * Places bases and cities onto the newly generated map.
+     *
+     * @param players players participating in the game
+     */
     private void setBasesAndCities(Player[] players) {
         if (players.length < 2 || players.length > 4) {
             throw new IllegalArgumentException("Invalid number of players");
@@ -179,6 +237,14 @@ public class GameMap {
             }
         }
     }
+    /**
+     * Resolves random starting base coordinates for players
+     * while respecting the special two-player placement rule.
+     *
+     * @param players players participating in the game
+     * @param allBasesCoords all predefined base positions
+     * @return selected base coordinates for all players
+     */
     private HexTileCoords[] resolveBaseCoords(Player[] players, HexTileCoords[] allBasesCoords) {
         HexTileCoords[] basesCoords = new HexTileCoords[players.length];
 
@@ -204,6 +270,9 @@ public class GameMap {
         return basesCoords;
     }
 
+    /**
+     * Fills all remaining free tiles with randomized terrain tiles.
+     */
     private void setTerrainTiles() {
         List<TerrainType> terrainPool = new ArrayList<>();
         for (int i = 0; i < TILES_PER_TERRAIN_TYPE; i++) {

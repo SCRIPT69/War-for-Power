@@ -8,6 +8,10 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 
+/**
+ * Renders the top HUD panel containing current player info,
+ * round number and end-turn controls.
+ */
 public class GameTopPanelView {
     private final HBox root = new HBox(28);
 

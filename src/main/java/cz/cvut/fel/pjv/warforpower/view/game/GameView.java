@@ -12,6 +12,10 @@ import javafx.scene.layout.AnchorPane;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
+/**
+ * Main in-game view container combining the map view,
+ * top panel and additional UI overlays.
+ */
 public class GameView {
     private final AnchorPane root = new AnchorPane();
 

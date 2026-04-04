@@ -19,6 +19,10 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
+/**
+ * Responsible for rendering the game map, tiles, highlights
+ * and mouse interaction on the game canvas.
+ */
 public class GameMapView {
     private final Canvas canvas;
     private final GraphicsContext gc;
@@ -54,6 +58,11 @@ public class GameMapView {
         return canvas;
     }
 
+    /**
+     * Sets highlighted tile coordinates to be rendered on the map.
+     *
+     * @param coords highlighted tile coordinates
+     */
     public void setHighlightedTiles(Set<HexTileCoords> coords) {
         highlightedTiles.clear();
         highlightedTiles.addAll(coords);
@@ -75,6 +84,9 @@ public class GameMapView {
         highlightedTiles.clear();
     }
 
+    /**
+     * Renders the current map state on the canvas.
+     */
     public void renderMap() {
         gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
 
@@ -121,6 +133,12 @@ public class GameMapView {
         }
     }
 
+    /**
+     * Returns screen position of the specified tile.
+     *
+     * @param coords tile coordinates
+     * @return screen position of the tile
+     */
     public ScreenPosition getTileScreenPosition(HexTileCoords coords) {
         return positionGenerator.getTilePosition(coords.rowIndex(), coords.tileIndex());
     }

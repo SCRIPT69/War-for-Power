@@ -1,6 +1,10 @@
 package cz.cvut.fel.pjv.warforpower.model.tiles;
 
 
+/**
+ * Abstract base class for all map tiles.
+ * Every tile has fixed coordinates and a tile type.
+ */
 public abstract class HexTile {
     private final HexTileCoords tileCoords;
     private final HexTileType tileType;
@@ -25,10 +29,20 @@ public abstract class HexTile {
         return tileCoords;
     }
 
+    /**
+     * Returns the row index of this tile.
+     *
+     * @return row index
+     */
     public int getRowIndex() {
         return tileCoords.rowIndex();
     }
 
+    /**
+     * Returns the tile index within its row.
+     *
+     * @return tile index
+     */
     public int getTileIndex() {
         return tileCoords.tileIndex();
     }

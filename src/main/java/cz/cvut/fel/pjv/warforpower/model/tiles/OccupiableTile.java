@@ -6,6 +6,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * Abstract tile type that can contain units standing on it.
+ */
 public abstract class OccupiableTile extends HexTile {
     private static final int MAX_UNITS = 2;
     private final List<Unit> standingUnits = new ArrayList<>(MAX_UNITS);
@@ -14,10 +17,20 @@ public abstract class OccupiableTile extends HexTile {
         super(tileCoords, tileType);
     }
 
+    /**
+     * Returns all units currently standing on this tile.
+     *
+     * @return list of standing units
+     */
     public List<Unit> getStandingUnits() {
         return Collections.unmodifiableList(standingUnits);
     }
 
+    /**
+     * Adds a unit to this tile.
+     *
+     * @param unit unit to add
+     */
     public void addUnit(Unit unit) {
         if (unit == null) {
             throw new IllegalArgumentException("Unit cannot be null.");
@@ -28,6 +41,11 @@ public abstract class OccupiableTile extends HexTile {
         standingUnits.add(unit);
     }
 
+    /**
+     * Removes a unit from this tile.
+     *
+     * @param unit unit to remove
+     */
     public void removeUnit(Unit unit) {
         if (unit == null) {
             throw new IllegalArgumentException("Unit cannot be null.");
@@ -40,10 +58,20 @@ public abstract class OccupiableTile extends HexTile {
         return standingUnits.remove(unit);
     }
 
+    /**
+     * Returns whether the tile has reached its unit capacity.
+     *
+     * @return true if no more units may be placed on this tile
+     */
     public boolean isFull() {
         return standingUnits.size() >= MAX_UNITS;
     }
 
+    /**
+     * Returns whether the tile currently contains any units.
+     *
+     * @return true if at least one unit stands on the tile
+     */
     public boolean hasUnits() {
         return !standingUnits.isEmpty();
     }

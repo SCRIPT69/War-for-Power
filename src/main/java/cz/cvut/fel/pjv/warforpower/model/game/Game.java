@@ -10,7 +10,10 @@ import cz.cvut.fel.pjv.warforpower.model.units.UnitType;
 import java.util.ArrayList;
 import java.util.List;
 
-
+/**
+ * Central class coordinating the main game rules, round progression
+ * and turn order of all players.
+ */
 public class Game {
     public static final int MIN_PLAYERS = 2;
     public static final int MAX_PLAYERS = 4;
@@ -30,6 +33,11 @@ public class Game {
         return playersNumber;
     }
 
+    /**
+     * Returns the player whose turn is currently active.
+     *
+     * @return current player
+     */
     public Player getCurrentPlayer() {
         return currentPlayer;
     }
@@ -53,6 +61,10 @@ public class Game {
         return gameMap;
     }
 
+    /**
+     * Initializes a new game round sequence, creates the map
+     * and sets the first active player.
+     */
     public void startNewGame() {
         currentRound = 1;
         currentPlayerIndex = 0;
@@ -63,6 +75,15 @@ public class Game {
         //if smth endRound()
     }
 
+    /**
+     * Buys a new unit on the specified base tile if all game rules are satisfied.
+     *
+     * @param unitType type of unit to buy
+     * @param baseTileCoords coordinates of the base tile
+     * @return newly created unit
+     * @throws IllegalArgumentException if arguments are invalid
+     * @throws IllegalStateException if the purchase is not allowed by current game rules
+     */
     public Unit buyUnit(UnitType unitType, HexTileCoords baseTileCoords) {
         if (unitType == null) {
             throw new IllegalArgumentException("Unit type cannot be null.");
@@ -103,6 +124,15 @@ public class Game {
         return newUnit;
     }
 
+    /**
+     * Returns all neighbouring occupiable tiles that the given unit
+     * can move to during the current turn.
+     *
+     * @param unit unit whose movement options are requested
+     * @return list of valid movement target tiles
+     * @throws IllegalArgumentException if the unit is null
+     * @throws IllegalStateException if the unit is not allowed to act
+     */
     public List<OccupiableTile> getMovementOptions(Unit unit) {
         if (unit == null) {
             throw new IllegalArgumentException("Unit cannot be null.");
@@ -127,6 +157,15 @@ public class Game {
         }
         return movementOptions;
     }
+    /**
+     * Checks whether a tile can be entered by the given unit.
+     * A tile is available if it is empty, or if it contains only allied units
+     * and still has free capacity.
+     *
+     * @param unit unit that wants to move
+     * @param tile target tile
+     * @return true if the tile is available for movement
+     */
     private boolean isTileAvailableForMovement(Unit unit, OccupiableTile tile) {
         if (!tile.hasUnits()) {
             return true;
@@ -135,6 +174,14 @@ public class Game {
         return tile.getStandingUnits().getFirst().getOwner() == unit.getOwner() && !tile.isFull();
     }
 
+    /**
+     * Moves the given unit to the target tile if the move is valid.
+     *
+     * @param unit unit to move
+     * @param targetTile destination tile
+     * @throws IllegalArgumentException if arguments are invalid
+     * @throws IllegalStateException if the move is not allowed
+     */
     public void moveUnitToTile(Unit unit, OccupiableTile targetTile) {
         if (unit == null) {
             throw new IllegalArgumentException("Unit cannot be null.");
@@ -161,6 +208,15 @@ public class Game {
         unit.setOccupiedTile(targetTile);
     }
 
+    /**
+     * Captures the specified occupiable tile for the current player's unit.
+     * Only tiles implementing the Ownable interface can be captured.
+     *
+     * @param unit unit performing the capture
+     * @param tile tile to capture
+     * @throws IllegalArgumentException if arguments are invalid
+     * @throws IllegalStateException if the capture is not allowed
+     */
     public void captureTile(Unit unit, OccupiableTile tile) {
         if (unit == null) {
             throw new IllegalArgumentException("Unit cannot be null.");
@@ -198,7 +254,16 @@ public class Game {
         ownableTile.setOwner(owner);
     }
 
+    /**
+     * Ends the current player's turn and advances the game
+     * to the next non-eliminated player.
+     *
+     * @throws IllegalStateException if no active players remain in the game
+     */
     public void endTurn() {
+        // Search for the next non-eliminated player. If the index exceeds the array,
+        // a new round starts and the search continues from the first player.
+
         updateEliminatedPlayers();
         int checkedPlayers = 0;
         while (checkedPlayers < players.length) {
@@ -216,6 +281,10 @@ public class Game {
         }
         throw new IllegalStateException("No active players remaining.");
     }
+    /**
+     * Updates elimination status of players who no longer own any bases
+     * and do not control any units on the map.
+     */
     private void updateEliminatedPlayers() {
         //Eliminating players without any bases and units
         for (Player player : players) {
@@ -224,6 +293,10 @@ public class Game {
             }
         }
     }
+    /**
+     * Finishes the current round, resets round-based temporary states
+     * and awards base income to all active players.
+     */
     private void endRound() {
         for (BaseTile base : gameMap.getAllBases()) {
             base.resetRoundPurchaseState();
@@ -233,6 +306,9 @@ public class Game {
         currentPlayerIndex = 0;
         currentRound++;
     }
+    /**
+     * Awards round income to players according to the number of bases they control.
+     */
     private void increasePlayersMoneyForBases() {
         for (Player player : players) {
             if (player.isEliminated()) {

@@ -16,15 +16,28 @@ public class GameController {
     private final GameView gameView;
     private HexTileCoords selectedBaseCoords;
 
+    /**
+     * Creates a controller for a new game with the given number of players.
+     *
+     * @param playersNumber number of players
+     */
     public GameController(int playersNumber) {
         this.game = new Game(playersNumber);
         this.gameView = new GameView(game.getGameMap());
     }
 
+    /**
+     * Returns the root node of the game view.
+     *
+     * @return root UI node
+     */
     public Parent getGameViewRoot() {
         return this.gameView.getRoot();
     }
 
+    /**
+     * Starts a new game and initializes the first rendered state.
+     */
     public void startNewGame() {
         game.startNewGame();
         bindViewActions();
