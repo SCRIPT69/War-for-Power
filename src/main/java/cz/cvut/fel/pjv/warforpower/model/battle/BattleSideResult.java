@@ -5,13 +5,14 @@ import cz.cvut.fel.pjv.warforpower.model.units.Unit;
 import java.util.List;
 
 /**
- * Stores battle data for one side of the conflict,
- * including participating units, dice rolls and bonus points.
+ * Stores battle data of one side, including participating units,
+ * dice rolls, bonus points and units lost in the battle.
  */
 public record BattleSideResult(
         List<Unit> units,
         DiceRoll rolls,
-        int bonusPoints
+        int bonusPoints,
+        List<Unit> lostUnits
 ) {
     /**
      * Returns the sum of dice rolls of this battle side.
