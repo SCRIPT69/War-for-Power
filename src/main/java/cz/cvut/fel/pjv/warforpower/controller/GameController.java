@@ -9,12 +9,16 @@ import cz.cvut.fel.pjv.warforpower.view.PlayerColorCssMapper;
 import cz.cvut.fel.pjv.warforpower.view.ScreenPosition;
 import cz.cvut.fel.pjv.warforpower.view.UIConstants;
 import cz.cvut.fel.pjv.warforpower.view.game.GameView;
+import cz.cvut.fel.pjv.warforpower.view.game.TileOwnershipLayerView;
 import javafx.scene.Parent;
+
+import java.util.Timer;
 
 public class GameController {
     private final Game game;
     private final GameView gameView;
     private HexTileCoords selectedBaseCoords;
+    private final TurnTimerService timerService;
 
     /**
      * Creates a controller for a new game with the given number of players.
@@ -24,6 +28,7 @@ public class GameController {
     public GameController(int playersNumber) {
         this.game = new Game(playersNumber);
         this.gameView = new GameView(game.getGameMap());
+        this.timerService = new TurnTimerService();
     }
 
     /**
