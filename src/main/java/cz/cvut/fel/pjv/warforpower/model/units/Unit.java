@@ -15,7 +15,7 @@ public class Unit {
     private static final int TERRAIN_DISADVANTAGE_PENALTY = -2;
 
     private final UnitType unitType;
-    private boolean actedThisRound = false;
+    private boolean mainActionUsedThisRound = false;
 
     public Unit(UnitType unitType, Player owner, OccupiableTile occupiedTile) {
         if (unitType == null) {
@@ -70,18 +70,31 @@ public class Unit {
         return 0;
     }
 
-    public boolean hasActedThisRound() {
-        return actedThisRound;
+    /**
+     * Returns whether the unit has already used its main move/attack action in the current round.
+     *
+     * @return true if the main action has already been used
+     */
+    public boolean hasUsedMainActionThisRound() {
+        return mainActionUsedThisRound;
     }
 
+    /**
+     * Marks that the unit has already used its main move/attack action in the current round.
+     *
+     * @throws IllegalStateException if the main action has already been used
+     */
     public void markActedThisRound() {
-        if (actedThisRound) {
-            throw new IllegalStateException("Unit has already acted this round.");
+        if (mainActionUsedThisRound) {
+            throw new IllegalStateException("Unit has already used main action this round.");
         }
-        actedThisRound = true;
+        mainActionUsedThisRound = true;
     }
 
+    /**
+     * Resets round-based main action state of the unit.
+     */
     public void resetRoundActionState() {
-        actedThisRound = false;
+        mainActionUsedThisRound = false;
     }
 }

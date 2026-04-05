@@ -121,6 +121,25 @@ public class GameMap {
     }
 
     /**
+     * Returns all units currently present on the map.
+     *
+     * @return list of all units on the map
+     */
+    public List<Unit> getAllUnits() {
+        List<Unit> units = new ArrayList<>();
+
+        for (List<HexTile> row : map) {
+            for (HexTile tile : row) {
+                if (tile instanceof OccupiableTile occupiableTile) {
+                    units.addAll(occupiableTile.getStandingUnits());
+                }
+            }
+        }
+
+        return units;
+    }
+
+    /**
      * Returns all base tiles currently present on the map.
      *
      * @return list of all bases

@@ -3,6 +3,8 @@ package cz.cvut.fel.pjv.warforpower.model.game;
 import cz.cvut.fel.pjv.warforpower.model.map.GameMap;
 import cz.cvut.fel.pjv.warforpower.model.players.Player;
 import cz.cvut.fel.pjv.warforpower.model.players.PlayersFactory;
+import cz.cvut.fel.pjv.warforpower.model.score.GameScoreResult;
+import cz.cvut.fel.pjv.warforpower.model.score.ScoreCalculator;
 import cz.cvut.fel.pjv.warforpower.model.tiles.*;
 import cz.cvut.fel.pjv.warforpower.model.units.Unit;
 import cz.cvut.fel.pjv.warforpower.model.units.UnitType;
@@ -18,6 +20,7 @@ import java.util.logging.Logger;
 public class Game {
     public static final int MIN_PLAYERS = 2;
     public static final int MAX_PLAYERS = 4;
+    public static final int NUMBER_OF_ROUNDS = 15;
     public static final int START_MONEY_AMOUNT = 100;
     public static final int PRICE_FOR_TILE = 50;
     public static final int MONEY_PER_BASE = 50;
@@ -29,6 +32,7 @@ public class Game {
     private int currentPlayerIndex;
     private Player currentPlayer;
     private final GameMap gameMap;
+    private final ScoreCalculator scoreCalculator;
 
     private int currentRound = 0;
 
@@ -49,6 +53,12 @@ public class Game {
         return currentRound;
     }
 
+    /**
+     * Creates a new game instance for the given number of players.
+     *
+     * @param playersNumber number of players
+     * @throws IllegalArgumentException if the number of players is outside the allowed range
+     */
     public Game(int playersNumber) {
         if (playersNumber < MIN_PLAYERS || playersNumber > MAX_PLAYERS) {
             throw new IllegalArgumentException(
@@ -58,8 +68,14 @@ public class Game {
         this.playersNumber = playersNumber;
         this.players = PlayersFactory.createPlayers(playersNumber);
         this.gameMap = new GameMap();
+        this.scoreCalculator = new ScoreCalculator();
     }
 
+    /**
+     * Returns the game map associated with this game.
+     *
+     * @return game map
+     */
     public GameMap getGameMap() {
         return gameMap;
     }
@@ -121,8 +137,8 @@ public class Game {
 
         Unit newUnit = new Unit(unitType, owner, baseTile);
         baseTile.addUnit(newUnit);
-        newUnit.markActedThisRound(); // new unit can not act this round
-        baseTile.markUnitBoughtThisRound(); // limit for buying new units on one base
+        newUnit.markActedThisRound(); // newly recruited units cannot act in the same round
+        baseTile.markUnitBoughtThisRound(); // only one unit can be recruited per base in a round
         owner.decreaseMoney(unitType.getPrice());
         return newUnit;
     }
@@ -146,8 +162,8 @@ public class Game {
         if (unit.getOwner() != currentPlayer) {
             throw new IllegalStateException("Only current player's units can be queried for movement.");
         }
-        if (unit.hasActedThisRound()) {
-            throw new IllegalStateException("Unit has already acted this round.");
+        if (unit.hasUsedMainActionThisRound()) {
+            throw new IllegalStateException("Unit has already used its main action this round.");
         }
         OccupiableTile currentTile = unit.getOccupiedTile();
 
@@ -198,8 +214,8 @@ public class Game {
         if (unit.getOwner() != currentPlayer) {
             throw new IllegalStateException("Only current player's units can be moved.");
         }
-        if (unit.hasActedThisRound()) {
-            throw new IllegalStateException("Unit has already acted this round.");
+        if (unit.hasUsedMainActionThisRound()) {
+            throw new IllegalStateException("Unit has already used its main action this round.");
         }
         if (!getMovementOptions(unit).contains(targetTile)) {
             throw new IllegalStateException("Invalid tile for movement.");
@@ -214,6 +230,7 @@ public class Game {
     /**
      * Captures the specified occupiable tile for the current player's unit.
      * Only tiles implementing the Ownable interface can be captured.
+     * Capturing a tile does not consume the unit's main move/attack action for the round.
      *
      * @param unit unit performing the capture
      * @param tile tile to capture
@@ -268,6 +285,15 @@ public class Game {
         // a new round starts and the search continues from the first player.
 
         updateEliminatedPlayers();
+        int activePlayersCount = getActivePlayersCount();
+        if (activePlayersCount == 1) {
+            endGame();
+            return;
+        }
+        else if (activePlayersCount == 0) {
+            throw new IllegalStateException("No active players remaining.");
+        }
+
         int checkedPlayers = 0;
         while (checkedPlayers < players.length) {
             currentPlayerIndex++;
@@ -289,7 +315,7 @@ public class Game {
      * and do not control any units on the map.
      */
     private void updateEliminatedPlayers() {
-        //Eliminating players without any bases and units
+        // A player is eliminated once they control no bases and no units.
         for (Player player : players) {
             if (!player.isEliminated() && player.getBasesCount() == 0 && gameMap.countUnitsOfPlayer(player) == 0) {
                 player.setEliminated(true);
@@ -297,17 +323,45 @@ public class Game {
         }
     }
     /**
-     * Finishes the current round, resets round-based temporary states
+     * Counts players who are still active in the game.
+     *
+     * @return number of active players
+     */
+    private int getActivePlayersCount() {
+        int activePlayersCount = 0;
+        for (Player player : players) {
+            if (!player.isEliminated()) {
+                activePlayersCount++;
+            }
+        }
+        return activePlayersCount;
+    }
+    /**
+     * Finishes the current round, resets round-based temporary states, unit round-action state
      * and awards base income to all active players.
      */
     private void endRound() {
+        if (currentRound == NUMBER_OF_ROUNDS) {
+            endGame();
+            return;
+        }
+
         for (BaseTile base : gameMap.getAllBases()) {
             base.resetRoundPurchaseState();
         }
+        resetUnitsRoundActionState();
         increasePlayersMoneyForBases();
 
         currentPlayerIndex = 0;
         currentRound++;
+    }
+    /**
+     * Resets round-based main action state of all units currently present on the map.
+     */
+    private void resetUnitsRoundActionState() {
+        for (Unit unit : gameMap.getAllUnits()) {
+            unit.resetRoundActionState();
+        }
     }
     /**
      * Awards round income to players according to the number of bases they control.
@@ -323,5 +377,23 @@ public class Game {
                 player.increaseMoney(basesCount * MONEY_PER_BASE);
             }
         }
+    }
+
+    /**
+     * Ends the game and prepares final score evaluation and end-game handling.
+     * The full end-game flow is intended to be completed in later implementation stages.
+     */
+    public void endGame() {
+        //GameScoreResult gameScoreResult = calculateFinalScore();
+        //and other logic
+    }
+
+    /**
+     * Calculates final score results of all players.
+     *
+     * @return final game score result
+     */
+    public GameScoreResult calculateFinalScore() {
+        return scoreCalculator.calculateGameResult(gameMap, players);
     }
 }
