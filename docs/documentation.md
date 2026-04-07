@@ -232,7 +232,7 @@ During the active game, the following gameplay states may occur:
 
 The project uses the following technologies and tools:
 
-- **Java 21** – main programming language
+- **Java 25** – main programming language
 - **Maven** – project build and dependency management
 - **JavaFX** – graphical user interface
 - **JavaFX Service / Task API** – background timer functionality
