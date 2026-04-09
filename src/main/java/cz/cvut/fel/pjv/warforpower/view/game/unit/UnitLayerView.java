@@ -1,4 +1,4 @@
-package cz.cvut.fel.pjv.warforpower.view.game;
+package cz.cvut.fel.pjv.warforpower.view.game.unit;
 
 import cz.cvut.fel.pjv.warforpower.model.map.GameMap;
 import cz.cvut.fel.pjv.warforpower.model.tiles.HexTile;
@@ -7,8 +7,11 @@ import cz.cvut.fel.pjv.warforpower.model.tiles.OccupiableTile;
 import cz.cvut.fel.pjv.warforpower.model.units.Unit;
 import cz.cvut.fel.pjv.warforpower.view.ScreenPosition;
 import cz.cvut.fel.pjv.warforpower.view.UIConstants;
+import cz.cvut.fel.pjv.warforpower.view.game.tiles.HexTilesPositionGenerator;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
+
+import java.util.List;
 
 /**
  * Responsible for rendering units on top of the game map.
@@ -18,13 +21,12 @@ public class UnitLayerView {
     private final Canvas canvas;
     private final GraphicsContext gc;
     private final HexTilesPositionGenerator positionGenerator;
-    private final UnitImageProvider unitImageProvider;
 
     public UnitLayerView() {
         this.canvas = new Canvas(UIConstants.WINDOW_WIDTH, UIConstants.WINDOW_HEIGHT);
+        this.canvas.setMouseTransparent(true);
         this.gc = canvas.getGraphicsContext2D();
         this.positionGenerator = new HexTilesPositionGenerator();
-        this.unitImageProvider = new UnitImageProvider();
     }
 
     /**
@@ -50,24 +52,27 @@ public class UnitLayerView {
                 HexTile tile = gameMap.getTile(coords);
 
                 if (tile instanceof OccupiableTile occupiableTile && occupiableTile.hasUnits()) {
-                    ScreenPosition tilePosition = positionGenerator.getTilePosition(rowIndex, tileIndex);
-                    renderUnitsOnTile(occupiableTile, tilePosition);
+                    ScreenPosition tilePos = positionGenerator.getTilePosition(rowIndex, tileIndex);
+                    renderUnitsOnTile(occupiableTile, tilePos);
                 }
             }
         }
     }
 
     /**
-     * Renders units standing on a single occupiable tile.
-     * The exact placement strategy may be extended later.
+     * Renders units standing on a single tile.
+     * One unit is drawn slightly below center; two units are drawn above and below center.
      *
-     * @param tile occupiable tile
-     * @param tilePosition screen position of the tile
+     * @param tile        occupiable tile with units
+     * @param tilePosition top-left screen position of the tile
      */
     private void renderUnitsOnTile(OccupiableTile tile, ScreenPosition tilePosition) {
-        // TODO: draw one unit near the center-bottom, or two units top/bottom.
-        for (Unit unit : tile.getStandingUnits()) {
-            // TODO: render unit sprite using UnitImageProvider.
+        List<Unit> units = tile.getStandingUnits();
+        List<ScreenPosition> positions =
+                UnitPositionCalculator.forTile(tilePosition, units.size());
+
+        for (int i = 0; i < units.size(); i++) {
+            UnitIconRenderer.draw(gc, units.get(i), positions.get(i));
         }
     }
 }

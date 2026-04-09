@@ -5,6 +5,7 @@ import cz.cvut.fel.pjv.warforpower.model.tiles.HexTileCoords;
 import cz.cvut.fel.pjv.warforpower.model.units.UnitType;
 import cz.cvut.fel.pjv.warforpower.view.ScreenPosition;
 import cz.cvut.fel.pjv.warforpower.view.UIConstants;
+import cz.cvut.fel.pjv.warforpower.view.game.unit.UnitLayerView;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
 import javafx.scene.layout.AnchorPane;
@@ -20,6 +21,7 @@ public class GameView {
     private final AnchorPane root = new AnchorPane();
 
     private final GameMapView gameMapView;
+    private final UnitLayerView unitLayerView = new UnitLayerView();
     private final GameTopPanelView topPanelView =
             new GameTopPanelView(UIConstants.WINDOW_WIDTH - 80);
     private final UnitPurchaseMenuView purchaseMenuView = new UnitPurchaseMenuView();
@@ -34,7 +36,10 @@ public class GameView {
         AnchorPane.setLeftAnchor(topPanelView.getRoot(), 40.0);
         AnchorPane.setRightAnchor(topPanelView.getRoot(), 40.0);
 
-        root.getChildren().addAll(gameMapView.getCanvas(), topPanelView.getRoot(), purchaseMenuView.getRoot());
+        root.getChildren().addAll(gameMapView.getCanvas(),
+                unitLayerView.getCanvas(),
+                topPanelView.getRoot(),
+                purchaseMenuView.getRoot());
     }
 
     public Parent getRoot() {
@@ -67,6 +72,10 @@ public class GameView {
 
     public void updateTopPanel(String playerName, String playerColorCss, int coins, int round) {
         topPanelView.update(playerName, playerColorCss, coins, round);
+    }
+
+    public void renderUnits(GameMap gameMap) {
+        unitLayerView.renderUnits(gameMap);
     }
 
     public Button getEndTurnButton() {

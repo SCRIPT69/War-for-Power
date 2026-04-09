@@ -1,4 +1,4 @@
-package cz.cvut.fel.pjv.warforpower.view.game;
+package cz.cvut.fel.pjv.warforpower.view.game.tiles;
 
 
 import cz.cvut.fel.pjv.warforpower.view.ScreenPosition;

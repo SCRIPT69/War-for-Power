@@ -9,7 +9,6 @@ import cz.cvut.fel.pjv.warforpower.view.PlayerColorCssMapper;
 import cz.cvut.fel.pjv.warforpower.view.ScreenPosition;
 import cz.cvut.fel.pjv.warforpower.view.UIConstants;
 import cz.cvut.fel.pjv.warforpower.view.game.GameView;
-import cz.cvut.fel.pjv.warforpower.view.game.TileOwnershipLayerView;
 import javafx.scene.Parent;
 
 import java.util.Timer;
@@ -137,5 +136,6 @@ public class GameController {
         gameView.addHighlightedTile(currentPlayerBase.getTileCoords());
 
         gameView.renderMap();
+        gameView.renderUnits(game.getGameMap());
     }
 }
