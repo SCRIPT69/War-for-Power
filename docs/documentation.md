@@ -108,6 +108,9 @@ The central coordinating class is `Game`, which manages turn order, round progre
 - **GameController**  
   Connects the game model with visual components and user interaction.
 
+- **InteractionRules**  
+  Encapsulates rules deciding whether game objects such as bases and units are currently interactive, based on current game state. Used by `GameController`.
+
 - **SceneManager**  
   Handles switching between major application scenes.
 
@@ -164,6 +167,7 @@ The class relationships follow a layered object-oriented structure.
 - `BattleResolver` creates `BattleResult`, which contains two `BattleSideResult` objects and one `BattleOutcome`.
 - `ScoreCalculator` creates `GameScoreResult`, which contains `ScoreResult` objects.
 - `GameController` connects `Game` with JavaFX views.
+- `InteractionRules` is used by `GameController` to evaluate whether specific bases and units are currently available for interaction.
 - `GameView` combines map-related and HUD-related visual components.
 - `SceneManager` switches between major application scenes such as menu, active game and end-game screen.
 
@@ -171,7 +175,7 @@ The class relationships follow a layered object-oriented structure.
 
 The following diagram shows the simplified object design of the application and the most important relationships between classes.
 
-![Simplified UML class diagram](warforpower_uml_final.svg)
+![Simplified UML class diagram](warforpower_uml.svg)
 
 ## 6. Game and Application States
 

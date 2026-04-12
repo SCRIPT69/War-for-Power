@@ -84,7 +84,7 @@ public class Unit {
      *
      * @throws IllegalStateException if the main action has already been used
      */
-    public void markActedThisRound() {
+    public void markUsedMainActionThisRound() {
         if (mainActionUsedThisRound) {
             throw new IllegalStateException("Unit has already used main action this round.");
         }

@@ -137,7 +137,7 @@ public class Game {
 
         Unit newUnit = new Unit(unitType, owner, baseTile);
         baseTile.addUnit(newUnit);
-        newUnit.markActedThisRound(); // newly recruited units cannot act in the same round
+        newUnit.markUsedMainActionThisRound(); // newly recruited units cannot act in the same round
         baseTile.markUnitBoughtThisRound(); // only one unit can be recruited per base in a round
         owner.decreaseMoney(unitType.getPrice());
 
@@ -228,8 +228,12 @@ public class Game {
         OccupiableTile oldTile = unit.getOccupiedTile();
         oldTile.removeUnit(unit);
         targetTile.addUnit(unit);
-        unit.markActedThisRound();
+        unit.markUsedMainActionThisRound();
         unit.setOccupiedTile(targetTile);
+
+        if (targetTile instanceof BaseTile baseTile && baseTile.getOwner() != unit.getOwner()) {
+            captureBase(unit.getOwner(), baseTile);
+        }
 
         LOGGER.info("Player " + unit.getOwner().getDisplayLabel()
                 + " moved " + unit.getUnitType()
@@ -238,24 +242,49 @@ public class Game {
     }
 
     /**
-     * Captures the specified occupiable tile for the current player's unit.
-     * Only tiles implementing the Ownable interface can be captured.
-     * Capturing a tile does not consume the unit's main move/attack action for the round.
+     * Transfers ownership of a base to the specified player.
+     *
+     * @param newOwner player who captures the base
+     * @param baseTile captured base tile
+     * @throws IllegalArgumentException if arguments are invalid
+     * @throws IllegalStateException if the base already belongs to the player
+     */
+    private void captureBase(Player newOwner, BaseTile baseTile) {
+        if (newOwner == null) {
+            throw new IllegalArgumentException("New owner cannot be null.");
+        }
+        if (baseTile == null) {
+            throw new IllegalArgumentException("Base tile cannot be null.");
+        }
+        if (baseTile.getOwner() == newOwner) {
+            throw new IllegalStateException("The base already belongs to the player.");
+        }
+
+        Player previousOwner = baseTile.getOwner();
+        previousOwner.decreaseBasesCount();
+        newOwner.increaseBasesCount();
+        baseTile.setOwner(newOwner);
+        baseTile.markUnitBoughtThisRound(); // player can not buy units on the new base in the current round
+
+        LOGGER.info("Player " + newOwner.getDisplayLabel()
+                + " captured enemy base at " + baseTile.getTileCoords() + ".");
+    }
+
+    /**
+     * Captures the specified terrain tile for the current player's unit.
+     * Capturing a terrain tile does not consume the unit's main move/attack action for the round.
      *
      * @param unit unit performing the capture
-     * @param tile tile to capture
+     * @param tile terrain tile to capture
      * @throws IllegalArgumentException if arguments are invalid
      * @throws IllegalStateException if the capture is not allowed
      */
-    public void captureTile(Unit unit, OccupiableTile tile) {
+    public void captureTerrainTile(Unit unit, TerrainTile tile) {
         if (unit == null) {
             throw new IllegalArgumentException("Unit cannot be null.");
         }
         if (tile == null) {
-            throw new IllegalArgumentException("Tile for capturing cannot be null.");
-        }
-        if (!(tile instanceof Ownable ownableTile)) {
-            throw new IllegalArgumentException("This tile cannot be captured.");
+            throw new IllegalArgumentException("Terrain tile cannot be null.");
         }
         if (unit.getOccupiedTile() != tile) {
             throw new IllegalArgumentException("Unit must stand on the tile for capturing it.");
@@ -268,7 +297,7 @@ public class Game {
         if (owner != currentPlayer) {
             throw new IllegalStateException("Only current player's units can capture tiles.");
         }
-        if (owner == ownableTile.getOwner()) {
+        if (owner == tile.getOwner()) {
             throw new IllegalStateException("The tile already belongs to the player.");
         }
         if (owner.getMoney() < PRICE_FOR_TILE) {
@@ -276,20 +305,10 @@ public class Game {
         }
 
         owner.decreaseMoney(PRICE_FOR_TILE);
-        if (ownableTile instanceof BaseTile baseTile) {
-            Player previousOwner = baseTile.getOwner();
-            previousOwner.decreaseBasesCount();
-            owner.increaseBasesCount();
-        }
-        ownableTile.setOwner(owner);
+        tile.setOwner(owner);
 
-        if (ownableTile instanceof BaseTile) {
-            LOGGER.info("Player " + owner.getDisplayLabel()
-                    + " captured enemy base at " + tile.getTileCoords() + ".");
-        } else {
-            LOGGER.info("Player " + owner.getDisplayLabel()
-                    + " captured tile " + tile.getTileCoords() + ".");
-        }
+        LOGGER.info("Player " + owner.getDisplayLabel()
+                + " captured tile " + tile.getTileCoords() + ".");
     }
 
     /**
@@ -408,7 +427,7 @@ public class Game {
     public void endGame() {
         //GameScoreResult gameScoreResult = calculateFinalScore();
         //and other logic
-        //LOGGER.info("Game ended.");
+        LOGGER.info("Game ended.");
     }
 
     /**
