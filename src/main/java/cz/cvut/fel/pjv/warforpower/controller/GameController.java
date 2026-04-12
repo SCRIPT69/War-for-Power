@@ -19,6 +19,7 @@ public class GameController {
     private final Game game;
     private final GameView gameView;
     private HexTileCoords selectedBaseCoords;
+    private final InteractionRules interactionRules;
     private final TurnTimerService timerService;
 
     /**
@@ -29,6 +30,7 @@ public class GameController {
     public GameController(int playersNumber) {
         this.game = new Game(playersNumber);
         this.gameView = new GameView(game.getGameMap());
+        this.interactionRules = new InteractionRules(this.game);
         this.timerService = new TurnTimerService();
     }
 
@@ -42,30 +44,11 @@ public class GameController {
     }
 
     /**
-     * Ends the current player's turn, switches to the next active player
-     * and refreshes the visible game state.
+     * Ends the current player's turn and refreshes the visible game state.
      */
     private void handleEndTurn() {
         game.endTurn();
-
-        Player currentPlayer = game.getCurrentPlayer();
-
-        gameView.updateTopPanel(
-                currentPlayer.getName(),
-                PlayerColorCssMapper.toCssColor(currentPlayer.getColor()),
-                currentPlayer.getMoney(),
-                game.getCurrentRound()
-        );
-
-        // Highlight bases of the newly active player.
-        gameView.clearHighlightedTiles();
-        for (BaseTile base : game.getGameMap().getBasesOfPlayer(currentPlayer)) {
-            gameView.addHighlightedTile(base.getTileCoords());
-        }
-
-        // Close temporary UI from the previous turn and redraw map layers.
-        gameView.hidePurchaseMenu();
-        gameView.renderMap();
+        refreshView();
     }
 
     /**
@@ -92,7 +75,7 @@ public class GameController {
             if (!(game.getGameMap().getTile(coords) instanceof BaseTile baseTile)) {
                 return false;
             }
-            return baseTile.getOwner() == game.getCurrentPlayer();
+            return interactionRules.isBaseInteractive(baseTile);
         });
 
         // Recruitment buttons attempt to buy a unit on the currently selected base
@@ -115,7 +98,7 @@ public class GameController {
     }
     /**
      * Handles tile click input and opens or closes the purchase menu
-     * depending on whether the clicked tile is the current player's base.
+     * depending on whether the clicked tile is currently interactive.
      *
      * @param coords clicked tile coordinates
      */
@@ -126,7 +109,7 @@ public class GameController {
             return;
         }
 
-        if (baseTile.getOwner() != game.getCurrentPlayer()) {
+        if (!interactionRules.isBaseInteractive(baseTile)) {
             selectedBaseCoords = null;
             gameView.hidePurchaseMenu();
             return;
@@ -186,10 +169,14 @@ public class GameController {
         );
 
         gameView.clearHighlightedTiles();
+        // Highlight bases of the newly active player.
+        if (game.getCurrentRound() == 1) {
+            BaseTile currentPlayerBase = game.getGameMap().getBasesOfPlayer(currentPlayer).getFirst();
+            gameView.addHighlightedTile(currentPlayerBase.getTileCoords());
+        }
 
-        BaseTile currentPlayerBase = game.getGameMap().getBasesOfPlayer(currentPlayer).getFirst();
-        gameView.addHighlightedTile(currentPlayerBase.getTileCoords());
-
+        // Close temporary UI from the previous turn and redraw map layers.
+        gameView.hidePurchaseMenu();
         gameView.renderMap();
         gameView.renderUnits(game.getGameMap());
     }
