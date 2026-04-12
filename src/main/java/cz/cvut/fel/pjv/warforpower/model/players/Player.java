@@ -31,8 +31,18 @@ public class Player {
         return name;
     }
 
+
     public PlayerColor getColor() {
         return color;
+    }
+
+    /**
+     * Returns display label of the player for logs and UI.
+     *
+     * @return player display label
+     */
+    public String getDisplayLabel() {
+        return name + " (" + color + ")";
     }
 
     public int getMoney() {

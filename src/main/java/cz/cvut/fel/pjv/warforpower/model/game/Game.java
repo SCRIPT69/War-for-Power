@@ -90,8 +90,8 @@ public class Game {
         gameMap.generateMap(players);
         currentPlayer = players[currentPlayerIndex];
 
-        //endTurn()
-        //if smth endRound()
+        LOGGER.info("New game started with " + playersNumber + " players.");
+        LOGGER.info("First active player: " + currentPlayer.getDisplayLabel() + ".");
     }
 
     /**
@@ -140,6 +140,11 @@ public class Game {
         newUnit.markActedThisRound(); // newly recruited units cannot act in the same round
         baseTile.markUnitBoughtThisRound(); // only one unit can be recruited per base in a round
         owner.decreaseMoney(unitType.getPrice());
+
+        LOGGER.info("Player " + owner.getDisplayLabel()
+                + " bought " + unitType
+                + " on base " + baseTileCoords + ".");
+
         return newUnit;
     }
 
@@ -225,6 +230,11 @@ public class Game {
         targetTile.addUnit(unit);
         unit.markActedThisRound();
         unit.setOccupiedTile(targetTile);
+
+        LOGGER.info("Player " + unit.getOwner().getDisplayLabel()
+                + " moved " + unit.getUnitType()
+                + " from " + oldTile.getTileCoords()
+                + " to " + targetTile.getTileCoords() + ".");
     }
 
     /**
@@ -272,6 +282,14 @@ public class Game {
             owner.increaseBasesCount();
         }
         ownableTile.setOwner(owner);
+
+        if (ownableTile instanceof BaseTile) {
+            LOGGER.info("Player " + owner.getDisplayLabel()
+                    + " captured enemy base at " + tile.getTileCoords() + ".");
+        } else {
+            LOGGER.info("Player " + owner.getDisplayLabel()
+                    + " captured tile " + tile.getTileCoords() + ".");
+        }
     }
 
     /**
@@ -304,6 +322,7 @@ public class Game {
 
             if (!players[currentPlayerIndex].isEliminated()) {
                 currentPlayer = players[currentPlayerIndex];
+                LOGGER.info("Current player is now " + currentPlayer.getDisplayLabel() + ".");
                 return;
             }
             checkedPlayers++;
@@ -319,6 +338,7 @@ public class Game {
         for (Player player : players) {
             if (!player.isEliminated() && player.getBasesCount() == 0 && gameMap.countUnitsOfPlayer(player) == 0) {
                 player.setEliminated(true);
+                LOGGER.info("Player " + player.getDisplayLabel() + " was eliminated.");
             }
         }
     }
@@ -345,6 +365,7 @@ public class Game {
             endGame();
             return;
         }
+        LOGGER.info("Round " + currentRound + " ended.");
 
         for (BaseTile base : gameMap.getAllBases()) {
             base.resetRoundPurchaseState();
@@ -354,6 +375,7 @@ public class Game {
 
         currentPlayerIndex = 0;
         currentRound++;
+        LOGGER.info("Round " + currentRound + " started.");
     }
     /**
      * Resets round-based main action state of all units currently present on the map.
@@ -386,6 +408,7 @@ public class Game {
     public void endGame() {
         //GameScoreResult gameScoreResult = calculateFinalScore();
         //and other logic
+        //LOGGER.info("Game ended.");
     }
 
     /**

@@ -11,6 +11,8 @@ import cz.cvut.fel.pjv.warforpower.view.UIConstants;
 import cz.cvut.fel.pjv.warforpower.view.game.GameView;
 import javafx.scene.Parent;
 
+import java.util.logging.Logger;
+
 /**
  * Connects user input from the game view with the game model
  * and updates the visible game state accordingly.
@@ -20,6 +22,9 @@ public class GameController {
     private final GameView gameView;
     private HexTileCoords selectedBaseCoords;
     private final InteractionRules interactionRules;
+
+    private static final Logger LOGGER = Logger.getLogger(GameController.class.getName());
+
     private final TurnTimerService timerService;
 
     /**
@@ -47,6 +52,7 @@ public class GameController {
      * Ends the current player's turn and refreshes the visible game state.
      */
     private void handleEndTurn() {
+        LOGGER.info("End turn requested by user.");
         game.endTurn();
         refreshView();
     }
@@ -56,6 +62,8 @@ public class GameController {
      */
     public void startNewGame() {
         game.startNewGame();
+        LOGGER.info("New game initialization requested from controller.");
+
         bindViewActions();
         refreshView();
     }
@@ -91,7 +99,7 @@ public class GameController {
                     selectedBaseCoords = null;
                     refreshView();
                 } catch (IllegalArgumentException | IllegalStateException e) {
-                    System.out.println(e.getMessage());
+                    LOGGER.warning("Unit purchase failed: " + e.getMessage());
                 }
             });
         }
@@ -119,6 +127,7 @@ public class GameController {
 
         ScreenPosition position = calculatePurchaseMenuPosition(gameView.getTileScreenPosition(coords));
         gameView.showPurchaseMenuAt(position.x(), position.y());
+        LOGGER.info("Purchase menu opened for base " + coords + ".");
     }
     /**
      * Calculates a screen position for the purchase menu near the selected base tile.
