@@ -9,9 +9,8 @@ import javafx.scene.image.Image;
  * Renders unit sprite images on a Canvas.
  */
 public final class UnitIconRenderer {
-
-    private static final double ICON_WIDTH = 40;
-    private static final double ICON_HEIGHT = 40;
+    private static final double ICON_WIDTH = 35;
+    private static final double ICON_HEIGHT = 35;
 
     private static final UnitImageProvider IMAGE_PROVIDER = new UnitImageProvider();
 

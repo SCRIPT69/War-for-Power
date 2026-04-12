@@ -14,7 +14,7 @@ public final class UnitPositionCalculator {
     private static final double TILE_HALF_HEIGHT = 40;
 
     /** Vertical offset between two units on the same tile. */
-    private static final double TWO_UNIT_OFFSET = 14;
+    private static final double TWO_UNIT_OFFSET = 18;
     /** Small downward shift when only one unit is on a tile. */
     private static final double ONE_UNIT_Y_SHIFT = 6;
 
