@@ -11,7 +11,8 @@ import cz.cvut.fel.pjv.warforpower.model.units.UnitType;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Central class coordinating the main game rules, round progression
@@ -25,7 +26,7 @@ public class Game {
     public static final int PRICE_FOR_TILE = 50;
     public static final int MONEY_PER_BASE = 50;
 
-    private static final Logger LOGGER = Logger.getLogger(Game.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(Game.class);
 
     private final int playersNumber;
     private final Player[] players;
@@ -90,8 +91,8 @@ public class Game {
         gameMap.generateMap(players);
         currentPlayer = players[currentPlayerIndex];
 
-        LOGGER.info("New game started with " + playersNumber + " players.");
-        LOGGER.info("First active player: " + currentPlayer.getDisplayLabel() + ".");
+        LOGGER.info("New game started with {} players.", playersNumber);
+        LOGGER.info("First active player: {}.", currentPlayer.getDisplayLabel());
     }
 
     /**
@@ -141,9 +142,8 @@ public class Game {
         baseTile.markUnitBoughtThisRound(); // only one unit can be recruited per base in a round
         owner.decreaseMoney(unitType.getPrice());
 
-        LOGGER.info("Player " + owner.getDisplayLabel()
-                + " bought " + unitType
-                + " on base " + baseTileCoords + ".");
+        LOGGER.info("Player {} bought {} on base {}.",
+                owner.getDisplayLabel(), unitType, baseTileCoords);
 
         return newUnit;
     }
@@ -235,10 +235,11 @@ public class Game {
             captureBase(unit.getOwner(), baseTile);
         }
 
-        LOGGER.info("Player " + unit.getOwner().getDisplayLabel()
-                + " moved " + unit.getUnitType()
-                + " from " + oldTile.getTileCoords()
-                + " to " + targetTile.getTileCoords() + ".");
+        LOGGER.info("Player {} moved {} from {} to {}.",
+                unit.getOwner().getDisplayLabel(),
+                unit.getUnitType(),
+                oldTile.getTileCoords(),
+                targetTile.getTileCoords());
     }
 
     /**
@@ -266,8 +267,8 @@ public class Game {
         baseTile.setOwner(newOwner);
         baseTile.markUnitBoughtThisRound(); // player can not buy units on the new base in the current round
 
-        LOGGER.info("Player " + newOwner.getDisplayLabel()
-                + " captured enemy base at " + baseTile.getTileCoords() + ".");
+        LOGGER.info("Player {} captured enemy base at {}.",
+                newOwner.getDisplayLabel(), baseTile.getTileCoords());
     }
 
     /**
@@ -307,8 +308,8 @@ public class Game {
         owner.decreaseMoney(PRICE_FOR_TILE);
         tile.setOwner(owner);
 
-        LOGGER.info("Player " + owner.getDisplayLabel()
-                + " captured tile " + tile.getTileCoords() + ".");
+        LOGGER.info("Player {} captured tile {}.",
+                owner.getDisplayLabel(), tile.getTileCoords());
     }
 
     /**
@@ -341,7 +342,7 @@ public class Game {
 
             if (!players[currentPlayerIndex].isEliminated()) {
                 currentPlayer = players[currentPlayerIndex];
-                LOGGER.info("Current player is now " + currentPlayer.getDisplayLabel() + ".");
+                LOGGER.info("Current player is now {}.", currentPlayer.getDisplayLabel());
                 return;
             }
             checkedPlayers++;
@@ -357,7 +358,7 @@ public class Game {
         for (Player player : players) {
             if (!player.isEliminated() && player.getBasesCount() == 0 && gameMap.countUnitsOfPlayer(player) == 0) {
                 player.setEliminated(true);
-                LOGGER.info("Player " + player.getDisplayLabel() + " was eliminated.");
+                LOGGER.info("Player {} was eliminated.", player.getDisplayLabel());
             }
         }
     }
@@ -384,7 +385,7 @@ public class Game {
             endGame();
             return;
         }
-        LOGGER.info("Round " + currentRound + " ended.");
+        LOGGER.info("Round {} ended.", currentRound);
 
         for (BaseTile base : gameMap.getAllBases()) {
             base.resetRoundPurchaseState();
@@ -394,7 +395,7 @@ public class Game {
 
         currentPlayerIndex = 0;
         currentRound++;
-        LOGGER.info("Round " + currentRound + " started.");
+        LOGGER.info("Round {} started.", currentRound);
     }
     /**
      * Resets round-based main action state of all units currently present on the map.

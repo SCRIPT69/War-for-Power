@@ -11,7 +11,8 @@ import cz.cvut.fel.pjv.warforpower.view.UIConstants;
 import cz.cvut.fel.pjv.warforpower.view.game.GameView;
 import javafx.scene.Parent;
 
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Connects user input from the game view with the game model
@@ -23,7 +24,7 @@ public class GameController {
     private HexTileCoords selectedBaseCoords;
     private final InteractionRules interactionRules;
 
-    private static final Logger LOGGER = Logger.getLogger(GameController.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(GameController.class);
 
     private final TurnTimerService timerService;
 
@@ -99,7 +100,7 @@ public class GameController {
                     selectedBaseCoords = null;
                     refreshView();
                 } catch (IllegalArgumentException | IllegalStateException e) {
-                    LOGGER.warning("Unit purchase failed: " + e.getMessage());
+                    LOGGER.warn("Unit purchase failed: {}", e.getMessage());
                 }
             });
         }
@@ -127,7 +128,7 @@ public class GameController {
 
         ScreenPosition position = calculatePurchaseMenuPosition(gameView.getTileScreenPosition(coords));
         gameView.showPurchaseMenuAt(position.x(), position.y());
-        LOGGER.info("Purchase menu opened for base " + coords + ".");
+        LOGGER.info("Purchase menu opened for base {}.", coords);
     }
     /**
      * Calculates a screen position for the purchase menu near the selected base tile.

@@ -240,7 +240,7 @@ The project uses the following technologies and tools:
 - **Maven** – project build and dependency management
 - **JavaFX** – graphical user interface
 - **JavaFX Service / Task API** – background timer functionality
-- **java.util.logging** – application logging
+- **SLF4J + Logback** – application logging
 - **Git / GitLab** – version control and project progress tracking
 
 ## 8. Additional Architectural Components
@@ -248,7 +248,7 @@ The project uses the following technologies and tools:
 Several supporting subsystems are already prepared in the architecture:
 
 - **Logging**  
-  Application-wide logging is configured through `LoggingConfig`. Logging can be enabled by startup parameter in the launcher.
+  Application-wide logging is implemented using SLF4J with Logback. Logging can be enabled by startup parameter in the launcher.
 
 - **Saving and loading**  
   `SaveManager` is prepared as a dedicated subsystem for saving and loading game state.
