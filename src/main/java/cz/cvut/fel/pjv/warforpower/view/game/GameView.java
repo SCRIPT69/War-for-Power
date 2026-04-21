@@ -3,6 +3,10 @@ package cz.cvut.fel.pjv.warforpower.view.game;
 import cz.cvut.fel.pjv.warforpower.model.map.GameMap;
 import cz.cvut.fel.pjv.warforpower.model.tiles.HexTileCoords;
 import cz.cvut.fel.pjv.warforpower.model.units.UnitType;
+import cz.cvut.fel.pjv.warforpower.model.map.GameMap;
+import cz.cvut.fel.pjv.warforpower.model.units.Unit;
+import java.util.List;
+import java.util.function.BiConsumer;
 import cz.cvut.fel.pjv.warforpower.view.ScreenPosition;
 import cz.cvut.fel.pjv.warforpower.view.UIConstants;
 import cz.cvut.fel.pjv.warforpower.view.game.unit.UnitLayerView;
@@ -25,9 +29,11 @@ public class GameView {
     private final GameTopPanelView topPanelView =
             new GameTopPanelView(UIConstants.WINDOW_WIDTH - 80);
     private final UnitPurchaseMenuView purchaseMenuView = new UnitPurchaseMenuView();
+    private final GameMap gameMap;
 
     public GameView(GameMap gameMap) {
-        gameMapView = new GameMapView(gameMap);
+        this.gameMap = gameMap;
+        gameMapView = new GameMapView(this.gameMap);
 
         AnchorPane.setTopAnchor(gameMapView.getCanvas(), 0.0);
         AnchorPane.setLeftAnchor(gameMapView.getCanvas(), 0.0);
@@ -70,11 +76,40 @@ public class GameView {
         gameMapView.clearHighlightedTiles();
     }
 
+
+    /**
+     * Registers predicate deciding whether a unit should be treated as interactive.
+     *
+     * @param isUnitInteractive predicate for unit interactivity
+     */
+    public void setUnitInteractivePredicate(Predicate<Unit> isUnitInteractive) {
+        gameMapView.setUnitInteractivePredicate(isUnitInteractive);
+    }
+
+    /**
+     * Registers unit click handler.
+     *
+     * @param onUnitClicked callback receiving clicked unit and shift key state
+     */
+    public void setOnUnitClicked(BiConsumer<Unit, Boolean> onUnitClicked) {
+        gameMapView.setOnUnitClicked(onUnitClicked);
+        gameMapView.setUnitAtResolver((mouseX, mouseY) ->
+                unitLayerView.findUnitAt(gameMap, mouseX, mouseY));
+    }
+
+
     public void updateTopPanel(String playerName, String playerColorCss, int coins, int round) {
         topPanelView.update(playerName, playerColorCss, coins, round);
     }
 
-    public void renderUnits(GameMap gameMap) {
+    /**
+     * Renders units on the unit layer and highlights currently selected units.
+     *
+     * @param gameMap current game map
+     * @param selectedUnits currently selected units
+     */
+    public void renderUnits(GameMap gameMap, List<Unit> selectedUnits) {
+        unitLayerView.setSelectedUnits(selectedUnits);
         unitLayerView.renderUnits(gameMap);
     }
 

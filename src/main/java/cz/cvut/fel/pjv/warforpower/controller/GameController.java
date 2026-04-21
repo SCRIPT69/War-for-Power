@@ -5,14 +5,19 @@ import cz.cvut.fel.pjv.warforpower.model.players.Player;
 import cz.cvut.fel.pjv.warforpower.model.tiles.BaseTile;
 import cz.cvut.fel.pjv.warforpower.model.tiles.HexTileCoords;
 import cz.cvut.fel.pjv.warforpower.model.units.UnitType;
+import cz.cvut.fel.pjv.warforpower.model.tiles.OccupiableTile;
+import cz.cvut.fel.pjv.warforpower.model.units.Unit;
 import cz.cvut.fel.pjv.warforpower.view.PlayerColorCssMapper;
 import cz.cvut.fel.pjv.warforpower.view.ScreenPosition;
 import cz.cvut.fel.pjv.warforpower.view.UIConstants;
 import cz.cvut.fel.pjv.warforpower.view.game.GameView;
+
 import javafx.scene.Parent;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.List;
 
 /**
  * Connects user input from the game view with the game model
@@ -23,6 +28,7 @@ public class GameController {
     private final GameView gameView;
     private HexTileCoords selectedBaseCoords;
     private final InteractionRules interactionRules;
+    private final UnitSelection unitSelection = new UnitSelection();
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GameController.class);
 
@@ -54,6 +60,7 @@ public class GameController {
      */
     private void handleEndTurn() {
         LOGGER.info("End turn requested by user.");
+        unitSelection.clear();
         game.endTurn();
         refreshView();
     }
@@ -75,6 +82,9 @@ public class GameController {
     private void bindViewActions() {
         // End turn button
         gameView.getEndTurnButton().setOnAction(event -> handleEndTurn());
+
+        gameView.setOnUnitClicked(this::handleUnitClicked);
+        gameView.setUnitInteractivePredicate(interactionRules::isUnitInteractive);
 
         // Tile clicks are handled centrally by the controller
         gameView.setOnTileClicked(this::handleTileClicked);
@@ -112,15 +122,19 @@ public class GameController {
      * @param coords clicked tile coordinates
      */
     private void handleTileClicked(HexTileCoords coords) {
+        unitSelection.clear();
+
         if (!(game.getGameMap().getTile(coords) instanceof BaseTile baseTile)) {
             selectedBaseCoords = null;
             gameView.hidePurchaseMenu();
+            refreshView();
             return;
         }
 
         if (!interactionRules.isBaseInteractive(baseTile)) {
             selectedBaseCoords = null;
             gameView.hidePurchaseMenu();
+            refreshView();
             return;
         }
 
@@ -128,6 +142,11 @@ public class GameController {
 
         ScreenPosition position = calculatePurchaseMenuPosition(gameView.getTileScreenPosition(coords));
         gameView.showPurchaseMenuAt(position.x(), position.y());
+
+        // Only redraw map/unit layers to remove unit selection highlight.
+        gameView.renderMap();
+        gameView.renderUnits(game.getGameMap(), unitSelection.getSelectedUnits());
+
         LOGGER.info("Purchase menu opened for base {}.", coords);
     }
     /**
@@ -165,6 +184,70 @@ public class GameController {
     }
 
     /**
+     * Handles unit click input and updates current unit selection.
+     * Shift-click may add a second unit if both selected units share
+     * at least one common valid movement target.
+     *
+     * @param unit clicked unit
+     * @param shiftHeld true if shift was held during click
+     */
+    private void handleUnitClicked(Unit unit, boolean shiftHeld) {
+        if (unit == null) {
+            return;
+        }
+        if (!interactionRules.isUnitInteractive(unit)) {
+            LOGGER.debug("Ignored click on non-interactive unit {}.", unit);
+            return;
+        }
+
+        if (!shiftHeld) {
+            unitSelection.selectSingle(unit);
+        } else {
+            if (!unitSelection.hasSelection()) {
+                unitSelection.selectSingle(unit);
+            } else if (unitSelection.size() == 1) {
+                Unit firstSelected = unitSelection.getFirstSelectedUnit();
+
+                if (firstSelected == unit) {
+                    unitSelection.selectSingle(unit);
+                } else if (canUnitsBeSelectedTogether(firstSelected, unit)) {
+                    unitSelection.selectPair(firstSelected, unit);
+                } else {
+                    unitSelection.selectSingle(unit);
+                }
+            } else {
+                unitSelection.selectSingle(unit);
+            }
+        }
+
+        selectedBaseCoords = null;
+        gameView.hidePurchaseMenu();
+
+        LOGGER.info("Selected {} unit(s).", unitSelection.size());
+        refreshView();
+    }
+    /**
+     * Returns whether two units may be selected together.
+     * Two units are considered compatible if they share at least one
+     * common valid movement target.
+     *
+     * @param first first unit
+     * @param second second unit
+     * @return true if both units share a common movement target
+     */
+    private boolean canUnitsBeSelectedTogether(Unit first, Unit second) {
+        List<OccupiableTile> firstOptions = game.getMovementOptions(first);
+        List<OccupiableTile> secondOptions = game.getMovementOptions(second);
+
+        for (OccupiableTile firstTile : firstOptions) {
+            if (secondOptions.contains(firstTile)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Refreshes the main game view according to the current game state.
      * Updates top panel data, highlighted tiles and rendered map layers.
      */
@@ -188,6 +271,6 @@ public class GameController {
         // Close temporary UI from the previous turn and redraw map layers.
         gameView.hidePurchaseMenu();
         gameView.renderMap();
-        gameView.renderUnits(game.getGameMap());
+        gameView.renderUnits(game.getGameMap(), unitSelection.getSelectedUnits());
     }
 }

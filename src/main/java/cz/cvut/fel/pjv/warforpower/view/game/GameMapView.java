@@ -5,6 +5,9 @@ import cz.cvut.fel.pjv.warforpower.model.tiles.BaseTile;
 import cz.cvut.fel.pjv.warforpower.model.tiles.HexTile;
 import cz.cvut.fel.pjv.warforpower.model.tiles.HexTileCoords;
 import cz.cvut.fel.pjv.warforpower.model.tiles.TerrainTile;
+import cz.cvut.fel.pjv.warforpower.model.units.Unit;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import cz.cvut.fel.pjv.warforpower.view.ScreenPosition;
 import cz.cvut.fel.pjv.warforpower.view.UIConstants;
 import cz.cvut.fel.pjv.warforpower.view.game.tiles.HexTilesPositionGenerator;
@@ -39,10 +42,12 @@ public class GameMapView {
     private static final double TILE_HEIGHT = 80;
 
     private final Set<HexTileCoords> highlightedTiles = new HashSet<>();
-
     private Predicate<HexTileCoords> isTileInteractive;
-
     private Consumer<HexTileCoords> onTileClicked;
+
+    private Predicate<Unit> isUnitInteractive;
+    private BiConsumer<Unit, Boolean> onUnitClicked;
+    private BiFunction<Double, Double, Unit> unitAtResolver;
 
     public GameMapView(GameMap gameMap) {
         this.gameMap = gameMap;
@@ -71,9 +76,9 @@ public class GameMapView {
     }
 
     public void setOnTileClicked(Consumer<HexTileCoords> onTileClicked) {
+
         this.onTileClicked = onTileClicked;
     }
-
     public void setTileInteractivePredicate(Predicate<HexTileCoords> isTileInteractive) {
         this.isTileInteractive = isTileInteractive;
     }
@@ -84,6 +89,34 @@ public class GameMapView {
 
     public void clearHighlightedTiles() {
         highlightedTiles.clear();
+    }
+
+
+    /**
+     * Registers predicate deciding whether a unit should be treated as interactive.
+     *
+     * @param isUnitInteractive predicate for unit interactivity
+     */
+    public void setUnitInteractivePredicate(Predicate<Unit> isUnitInteractive) {
+        this.isUnitInteractive = isUnitInteractive;
+    }
+
+    /**
+     * Registers unit click handler.
+     *
+     * @param onUnitClicked callback receiving clicked unit and shift key state
+     */
+    public void setOnUnitClicked(BiConsumer<Unit, Boolean> onUnitClicked) {
+        this.onUnitClicked = onUnitClicked;
+    }
+
+    /**
+     * Registers resolver used to find a unit at given screen coordinates.
+     *
+     * @param unitAtResolver resolver returning unit at mouse coordinates or null
+     */
+    public void setUnitAtResolver(BiFunction<Double, Double, Unit> unitAtResolver) {
+        this.unitAtResolver = unitAtResolver;
     }
 
     /**
@@ -109,22 +142,47 @@ public class GameMapView {
         }
     }
 
+    /**
+     * Handles mouse movement over the map canvas and updates cursor
+     * according to interactive units or tiles under the pointer.
+     *
+     * @param event mouse event
+     */
     private void handleMouseMoved(MouseEvent event) {
-        if (isTileInteractive == null) {
-            canvas.setCursor(Cursor.DEFAULT);
-            return;
+        if (unitAtResolver != null && isUnitInteractive != null) {
+            Unit hoveredUnit = unitAtResolver.apply(event.getX(), event.getY());
+            if (hoveredUnit != null && isUnitInteractive.test(hoveredUnit)) {
+                canvas.setCursor(Cursor.HAND);
+                return;
+            }
         }
 
         HexTileCoords hoveredCoords = findTileAt(event.getX(), event.getY());
-
-        if (hoveredCoords != null && isTileInteractive.test(hoveredCoords)) {
+        if (hoveredCoords != null
+                && isTileInteractive != null
+                && isTileInteractive.test(hoveredCoords)) {
             canvas.setCursor(Cursor.HAND);
-        } else {
-            canvas.setCursor(Cursor.DEFAULT);
+            return;
         }
+
+        canvas.setCursor(Cursor.DEFAULT);
     }
 
+    /**
+     * Handles mouse click on the map canvas.
+     * Unit click has priority over tile click.
+     *
+     * @param event mouse event
+     */
     private void handleMouseClicked(MouseEvent event) {
+        if (onUnitClicked != null && unitAtResolver != null) {
+            Unit clickedUnit = unitAtResolver.apply(event.getX(), event.getY());
+            if (clickedUnit != null) {
+                onUnitClicked.accept(clickedUnit, event.isShiftDown());
+                return;
+            }
+        }
+
         if (onTileClicked == null) {
             return;
         }
