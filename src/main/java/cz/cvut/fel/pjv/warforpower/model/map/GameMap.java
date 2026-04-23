@@ -175,6 +175,50 @@ public class GameMap {
     }
 
     /**
+     * Returns all neighbouring tiles of the specified tile coordinates.
+     *
+     * @param currentTileCoords coordinates of the reference tile
+     * @return list of neighbouring tiles
+     */
+    public List<HexTile> getNeighbourTiles(HexTileCoords currentTileCoords) {
+        List<HexTile> neighbours = new ArrayList<>();
+
+        int rowIndex = currentTileCoords.rowIndex();
+        int tileIndex = currentTileCoords.tileIndex();
+
+        // same row
+        addTileIfValid(neighbours, new HexTileCoords(rowIndex, tileIndex - 1));
+        addTileIfValid(neighbours, new HexTileCoords(rowIndex, tileIndex + 1));
+
+        if (rowIndex <= 4) {
+            addTileIfValid(neighbours, new HexTileCoords(rowIndex - 1, tileIndex));
+            addTileIfValid(neighbours, new HexTileCoords(rowIndex - 1, tileIndex + 1));
+            addTileIfValid(neighbours, new HexTileCoords(rowIndex + 1, tileIndex));
+            addTileIfValid(neighbours, new HexTileCoords(rowIndex + 1, tileIndex + 1));
+        } else {
+            addTileIfValid(neighbours, new HexTileCoords(rowIndex - 1, tileIndex));
+            addTileIfValid(neighbours, new HexTileCoords(rowIndex - 1, tileIndex + 1));
+            addTileIfValid(neighbours, new HexTileCoords(rowIndex + 1, tileIndex - 1));
+            addTileIfValid(neighbours, new HexTileCoords(rowIndex + 1, tileIndex));
+        }
+
+        return neighbours;
+    }
+    /**
+     * Adds the tile at the given coordinates to the provided list
+     * if the coordinates are valid.
+     *
+     * @param tiles output list of tiles
+     * @param coords coordinates to inspect
+     */
+    private void addTileIfValid(List<HexTile> tiles, HexTileCoords coords) {
+        if (!isValidCoords(coords)) {
+            return;
+        }
+
+        tiles.add(getTile(coords));
+    }
+    /**
      * Returns all neighbouring occupiable tiles of the specified tile coordinates.
      *
      * @param currentTileCoords coordinates of the reference tile
@@ -183,42 +227,13 @@ public class GameMap {
     public List<OccupiableTile> getNeighbourOccupiableTiles(HexTileCoords currentTileCoords) {
         List<OccupiableTile> neighbours = new ArrayList<>();
 
-        int rowIndex = currentTileCoords.rowIndex();
-        int tileIndex = currentTileCoords.tileIndex();
-
-        // same row
-        addOccupiableTileIfValid(neighbours, new HexTileCoords(rowIndex, tileIndex - 1));
-        addOccupiableTileIfValid(neighbours, new HexTileCoords(rowIndex, tileIndex + 1));
-
-        if (rowIndex <= 4) {
-            addOccupiableTileIfValid(neighbours, new HexTileCoords(rowIndex - 1, tileIndex));
-            addOccupiableTileIfValid(neighbours, new HexTileCoords(rowIndex - 1, tileIndex + 1));
-            addOccupiableTileIfValid(neighbours, new HexTileCoords(rowIndex + 1, tileIndex));
-            addOccupiableTileIfValid(neighbours, new HexTileCoords(rowIndex + 1, tileIndex + 1));
-        } else {
-            addOccupiableTileIfValid(neighbours, new HexTileCoords(rowIndex - 1, tileIndex));
-            addOccupiableTileIfValid(neighbours, new HexTileCoords(rowIndex - 1, tileIndex + 1));
-            addOccupiableTileIfValid(neighbours, new HexTileCoords(rowIndex + 1, tileIndex - 1));
-            addOccupiableTileIfValid(neighbours, new HexTileCoords(rowIndex + 1, tileIndex));
+        for (HexTile tile : getNeighbourTiles(currentTileCoords)) {
+            if (tile instanceof OccupiableTile occupiableTile) {
+                neighbours.add(occupiableTile);
+            }
         }
 
         return neighbours;
-    }
-    /**
-     * Adds the tile at the given coordinates to the provided list
-     * if the coordinates are valid and the tile is occupiable.
-     *
-     * @param tiles output list of occupiable tiles
-     * @param coords coordinates to inspect
-     */
-    private void addOccupiableTileIfValid(List<OccupiableTile> tiles, HexTileCoords coords) {
-        if (!isValidCoords(coords)) {
-            return;
-        }
-
-        if (getTile(coords) instanceof OccupiableTile occupiableTile) {
-            tiles.add(occupiableTile);
-        }
     }
 
     /**

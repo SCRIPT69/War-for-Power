@@ -2,8 +2,12 @@ package cz.cvut.fel.pjv.warforpower.controller;
 
 import cz.cvut.fel.pjv.warforpower.model.game.Game;
 import cz.cvut.fel.pjv.warforpower.model.tiles.BaseTile;
+import cz.cvut.fel.pjv.warforpower.model.tiles.HexTile;
+import cz.cvut.fel.pjv.warforpower.model.tiles.OccupiableTile;
 import cz.cvut.fel.pjv.warforpower.model.units.Unit;
 import cz.cvut.fel.pjv.warforpower.model.units.UnitType;
+
+import java.util.List;
 
 /**
  * Encapsulates rules deciding whether game objects are currently interactive.
@@ -68,5 +72,46 @@ public class InteractionRules {
         }
 
         return cheapestPrice;
+    }
+
+    /**
+     * Returns whether two units may be selected together.
+     * Two units are considered compatible if they share at least one
+     * common valid movement target or at least one common valid attack target.
+     *
+     * @param first first unit
+     * @param second second unit
+     * @return true if both units may act on at least one common tile
+     */
+    public boolean canUnitsBeSelectedTogether(Unit first, Unit second) {
+        if (first == null || second == null) {
+            throw new IllegalArgumentException("Units cannot be null.");
+        }
+        if (!isUnitInteractive(first) || !isUnitInteractive(second)) {
+            return false;
+        }
+        if (first == second) {
+            return false;
+        }
+
+        List<OccupiableTile> firstOptions = game.getMovementOptions(first);
+        List<OccupiableTile> secondOptions = game.getMovementOptions(second);
+
+        for (OccupiableTile firstTile : firstOptions) {
+            if (secondOptions.contains(firstTile)) {
+                return true;
+            }
+        }
+
+        List<HexTile> firstAttackOptions = game.getAttackOptions(first);
+        List<HexTile> secondAttackOptions = game.getAttackOptions(second);
+
+        for (HexTile tile : firstAttackOptions) {
+            if (secondAttackOptions.contains(tile)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

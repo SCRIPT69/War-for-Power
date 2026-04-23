@@ -34,6 +34,7 @@ public class Game {
     private Player currentPlayer;
     private final GameMap gameMap;
     private final ScoreCalculator scoreCalculator;
+    private final UnitActionTilesResolver unitActionTilesResolver;
 
     private int currentRound = 0;
 
@@ -70,6 +71,7 @@ public class Game {
         this.players = PlayersFactory.createPlayers(playersNumber);
         this.gameMap = new GameMap();
         this.scoreCalculator = new ScoreCalculator();
+        this.unitActionTilesResolver = new UnitActionTilesResolver(this);
     }
 
     /**
@@ -154,48 +156,20 @@ public class Game {
      *
      * @param unit unit whose movement options are requested
      * @return list of valid movement target tiles
-     * @throws IllegalArgumentException if the unit is null
-     * @throws IllegalStateException if the unit is not allowed to act
      */
     public List<OccupiableTile> getMovementOptions(Unit unit) {
-        if (unit == null) {
-            throw new IllegalArgumentException("Unit cannot be null.");
-        }
-        if (unit.getOwner().isEliminated()) {
-            throw new IllegalStateException("Eliminated player cannot query movement options.");
-        }
-        if (unit.getOwner() != currentPlayer) {
-            throw new IllegalStateException("Only current player's units can be queried for movement.");
-        }
-        if (unit.hasUsedMainActionThisRound()) {
-            throw new IllegalStateException("Unit has already used its main action this round.");
-        }
-        OccupiableTile currentTile = unit.getOccupiedTile();
-
-        List<OccupiableTile> currentTileNeighbours = gameMap.getNeighbourOccupiableTiles(currentTile.getTileCoords());
-        List<OccupiableTile> movementOptions = new ArrayList<>();
-        for (OccupiableTile tile : currentTileNeighbours) {
-            if (isTileAvailableForMovement(unit, tile)) {
-                movementOptions.add(tile);
-            }
-        }
-        return movementOptions;
+        return unitActionTilesResolver.getMovementOptions(unit);
     }
-    /**
-     * Checks whether a tile can be entered by the given unit.
-     * A tile is available if it is empty, or if it contains only allied units
-     * and still has free capacity.
-     *
-     * @param unit unit that wants to move
-     * @param tile target tile
-     * @return true if the tile is available for movement
-     */
-    private boolean isTileAvailableForMovement(Unit unit, OccupiableTile tile) {
-        if (!tile.hasUnits()) {
-            return true;
-        }
 
-        return tile.getStandingUnits().getFirst().getOwner() == unit.getOwner() && !tile.isFull();
+    /**
+     * Returns all neighbouring occupiable tiles that the given unit
+     * can attack during the current turn.
+     *
+     * @param unit unit whose attack options are requested
+     * @return list of valid attack target tiles
+     */
+    public List<HexTile> getAttackOptions(Unit unit) {
+        return unitActionTilesResolver.getAttackOptions(unit);
     }
 
     /**

@@ -210,7 +210,7 @@ public class GameController {
 
                 if (firstSelected == unit) {
                     unitSelection.selectSingle(unit);
-                } else if (canUnitsBeSelectedTogether(firstSelected, unit)) {
+                } else if (interactionRules.canUnitsBeSelectedTogether(firstSelected, unit)) {
                     unitSelection.selectPair(firstSelected, unit);
                 } else {
                     unitSelection.selectSingle(unit);
@@ -225,26 +225,6 @@ public class GameController {
 
         LOGGER.info("Selected {} unit(s).", unitSelection.size());
         refreshView();
-    }
-    /**
-     * Returns whether two units may be selected together.
-     * Two units are considered compatible if they share at least one
-     * common valid movement target.
-     *
-     * @param first first unit
-     * @param second second unit
-     * @return true if both units share a common movement target
-     */
-    private boolean canUnitsBeSelectedTogether(Unit first, Unit second) {
-        List<OccupiableTile> firstOptions = game.getMovementOptions(first);
-        List<OccupiableTile> secondOptions = game.getMovementOptions(second);
-
-        for (OccupiableTile firstTile : firstOptions) {
-            if (secondOptions.contains(firstTile)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     /**
