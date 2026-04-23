@@ -68,12 +68,21 @@ public class GameView {
         return gameMapView.getTileScreenPosition(coords);
     }
 
-    public void addHighlightedTile(HexTileCoords coords) {
-        gameMapView.addHighlightedTile(coords);
+    /**
+     * Adds tile highlight of the specified type.
+     *
+     * @param coords tile coordinates
+     * @param type highlight type
+     */
+    public void addTileHighlight(HexTileCoords coords, TileHighlightType type) {
+        gameMapView.addTileHighlight(coords, type);
     }
 
-    public void clearHighlightedTiles() {
-        gameMapView.clearHighlightedTiles();
+    /**
+     * Clears all tile highlights.
+     */
+    public void clearTileHighlights() {
+        gameMapView.clearTileHighlights();
     }
 
 

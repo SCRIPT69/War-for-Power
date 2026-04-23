@@ -5,19 +5,19 @@ import cz.cvut.fel.pjv.warforpower.model.players.Player;
 import cz.cvut.fel.pjv.warforpower.model.tiles.BaseTile;
 import cz.cvut.fel.pjv.warforpower.model.tiles.HexTileCoords;
 import cz.cvut.fel.pjv.warforpower.model.units.UnitType;
-import cz.cvut.fel.pjv.warforpower.model.tiles.OccupiableTile;
 import cz.cvut.fel.pjv.warforpower.model.units.Unit;
 import cz.cvut.fel.pjv.warforpower.view.PlayerColorCssMapper;
 import cz.cvut.fel.pjv.warforpower.view.ScreenPosition;
 import cz.cvut.fel.pjv.warforpower.view.UIConstants;
 import cz.cvut.fel.pjv.warforpower.view.game.GameView;
 
+import cz.cvut.fel.pjv.warforpower.view.game.TileHighlightType;
 import javafx.scene.Parent;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
+import java.util.Map;
 
 /**
  * Connects user input from the game view with the game model
@@ -28,11 +28,12 @@ public class GameController {
     private final GameView gameView;
     private HexTileCoords selectedBaseCoords;
     private final InteractionRules interactionRules;
-    private final UnitSelection unitSelection = new UnitSelection();
+    private final UnitSelection unitSelection;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GameController.class);
 
     private final TurnTimerService timerService;
+    private final SelectionTileHighlightResolver tileHighlightResolver;
 
     /**
      * Creates a controller for a new game with the given number of players.
@@ -43,7 +44,9 @@ public class GameController {
         this.game = new Game(playersNumber);
         this.gameView = new GameView(game.getGameMap());
         this.interactionRules = new InteractionRules(this.game);
+        this.unitSelection = new UnitSelection();
         this.timerService = new TurnTimerService();
+        this.tileHighlightResolver = new SelectionTileHighlightResolver(game);
     }
 
     /**
@@ -106,8 +109,7 @@ public class GameController {
 
                 try {
                     game.buyUnit(unitType, selectedBaseCoords);
-                    gameView.hidePurchaseMenu();
-                    selectedBaseCoords = null;
+                    clearBaseSelection();
                     refreshView();
                 } catch (IllegalArgumentException | IllegalStateException e) {
                     LOGGER.warn("Unit purchase failed: {}", e.getMessage());
@@ -125,27 +127,23 @@ public class GameController {
         unitSelection.clear();
 
         if (!(game.getGameMap().getTile(coords) instanceof BaseTile baseTile)) {
-            selectedBaseCoords = null;
-            gameView.hidePurchaseMenu();
+            clearBaseSelection();
             refreshView();
             return;
         }
 
         if (!interactionRules.isBaseInteractive(baseTile)) {
-            selectedBaseCoords = null;
-            gameView.hidePurchaseMenu();
+            clearBaseSelection();
             refreshView();
             return;
         }
 
         selectedBaseCoords = coords;
 
+        refreshMapLayers();
+
         ScreenPosition position = calculatePurchaseMenuPosition(gameView.getTileScreenPosition(coords));
         gameView.showPurchaseMenuAt(position.x(), position.y());
-
-        // Only redraw map/unit layers to remove unit selection highlight.
-        gameView.renderMap();
-        gameView.renderUnits(game.getGameMap(), unitSelection.getSelectedUnits());
 
         LOGGER.info("Purchase menu opened for base {}.", coords);
     }
@@ -182,11 +180,42 @@ public class GameController {
 
         return new ScreenPosition(menuX, menuY);
     }
+    /**
+     * Updates map-related visuals after selection or highlight state change
+     * without closing the currently visible purchase menu.
+     */
+    private void refreshMapLayers() {
+        updateTileHighlights();
+        gameView.renderMap();
+        gameView.renderUnits(game.getGameMap(), unitSelection.getSelectedUnits());
+    }
+
+    /**
+     * Clears current base selection and hides the purchase menu.
+     */
+    private void clearBaseSelection() {
+        selectedBaseCoords = null;
+        gameView.hidePurchaseMenu();
+    }
+
+    /**
+     * Updates visible tile highlights according to current selection state.
+     */
+    private void updateTileHighlights() {
+        gameView.clearTileHighlights();
+
+        Map<HexTileCoords, TileHighlightType> highlights =
+                tileHighlightResolver.resolve(unitSelection, game.getCurrentPlayer(), game.getCurrentRound());
+
+        for (Map.Entry<HexTileCoords, TileHighlightType> entry : highlights.entrySet()) {
+            gameView.addTileHighlight(entry.getKey(), entry.getValue());
+        }
+    }
 
     /**
      * Handles unit click input and updates current unit selection.
-     * Shift-click may add a second unit if both selected units share
-     * at least one common valid movement target.
+     * Shift-click may add a second unit if both selected units may act
+     * on at least one common tile.
      *
      * @param unit clicked unit
      * @param shiftHeld true if shift was held during click
@@ -220,8 +249,7 @@ public class GameController {
             }
         }
 
-        selectedBaseCoords = null;
-        gameView.hidePurchaseMenu();
+        clearBaseSelection();
 
         LOGGER.info("Selected {} unit(s).", unitSelection.size());
         refreshView();
@@ -241,16 +269,10 @@ public class GameController {
                 game.getCurrentRound()
         );
 
-        gameView.clearHighlightedTiles();
-        // Highlight bases of the newly active player.
-        if (game.getCurrentRound() == 1) {
-            BaseTile currentPlayerBase = game.getGameMap().getBasesOfPlayer(currentPlayer).getFirst();
-            gameView.addHighlightedTile(currentPlayerBase.getTileCoords());
-        }
+        updateTileHighlights();
 
         // Close temporary UI from the previous turn and redraw map layers.
         gameView.hidePurchaseMenu();
-        gameView.renderMap();
-        gameView.renderUnits(game.getGameMap(), unitSelection.getSelectedUnits());
+        refreshMapLayers();
     }
 }

@@ -6,6 +6,9 @@ import cz.cvut.fel.pjv.warforpower.model.tiles.HexTile;
 import cz.cvut.fel.pjv.warforpower.model.tiles.HexTileCoords;
 import cz.cvut.fel.pjv.warforpower.model.tiles.TerrainTile;
 import cz.cvut.fel.pjv.warforpower.model.units.Unit;
+
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import cz.cvut.fel.pjv.warforpower.view.ScreenPosition;
@@ -19,7 +22,6 @@ import javafx.scene.image.Image;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.Color;
 
-import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -41,7 +43,7 @@ public class GameMapView {
     private static final double TILE_WIDTH = 71;
     private static final double TILE_HEIGHT = 80;
 
-    private final Set<HexTileCoords> highlightedTiles = new HashSet<>();
+    private final Map<HexTileCoords, TileHighlightType> tileHighlights = new HashMap<>();
     private Predicate<HexTileCoords> isTileInteractive;
     private Consumer<HexTileCoords> onTileClicked;
 
@@ -66,29 +68,27 @@ public class GameMapView {
     }
 
     /**
-     * Sets highlighted tile coordinates to be rendered on the map.
+     * Adds tile highlight of the specified type.
      *
-     * @param coords highlighted tile coordinates
+     * @param coords tile coordinates
+     * @param type highlight type
      */
-    public void setHighlightedTiles(Set<HexTileCoords> coords) {
-        highlightedTiles.clear();
-        highlightedTiles.addAll(coords);
+    public void addTileHighlight(HexTileCoords coords, TileHighlightType type) {
+        tileHighlights.put(coords, type);
+    }
+    /**
+     * Removes all currently stored tile highlights.
+     */
+    public void clearTileHighlights() {
+        tileHighlights.clear();
     }
 
-    public void setOnTileClicked(Consumer<HexTileCoords> onTileClicked) {
 
+    public void setOnTileClicked(Consumer<HexTileCoords> onTileClicked) {
         this.onTileClicked = onTileClicked;
     }
     public void setTileInteractivePredicate(Predicate<HexTileCoords> isTileInteractive) {
         this.isTileInteractive = isTileInteractive;
-    }
-
-    public void addHighlightedTile(HexTileCoords coords) {
-        highlightedTiles.add(coords);
-    }
-
-    public void clearHighlightedTiles() {
-        highlightedTiles.clear();
     }
 
 
@@ -135,8 +135,9 @@ public class GameMapView {
                 ScreenPosition position = positionGenerator.getTilePosition(rowIndex, tileIndex);
 
                 drawTile(tile, position.x(), position.y());
-                if (highlightedTiles.contains(coords)) {
-                    drawBaseHighlight(position.x(), position.y());
+                TileHighlightType highlightType = tileHighlights.get(coords);
+                if (highlightType != null) {
+                    drawTileHighlight(position.x(), position.y(), highlightType);
                 }
             }
         }
@@ -265,21 +266,44 @@ public class GameMapView {
                 y + cornerHeight
         };
     }
-    private void drawBaseHighlight(double x, double y) {
-        double topOffset = -4.5;
-        double sideOffset = -4.5;
-        double cornerHeight = 18;
 
+    /**
+     * Draws a tile highlight of the specified type.
+     *
+     * @param x tile x position
+     * @param y tile y position
+     * @param type highlight type
+     */
+    private void drawTileHighlight(double x, double y, TileHighlightType type) {
         double[] xPoints = getHexXPoints(x);
-
         double[] yPoints = getHexYPoints(y);
 
-        gc.setFill(Color.color(1.0, 0.84, 0.0, 0.22));
-        gc.fillPolygon(xPoints, yPoints, 6);
+        switch (type) {
+            case TUTORIAL_BASE -> {
+                gc.setFill(Color.color(1.0, 0.84, 0.0, 0.22));
+                gc.fillPolygon(xPoints, yPoints, 6);
 
-        gc.setStroke(Color.GOLD);
-        gc.setLineWidth(4);
-        gc.strokePolygon(xPoints, yPoints, 6);
+                gc.setStroke(Color.GOLD);
+                gc.setLineWidth(4);
+                gc.strokePolygon(xPoints, yPoints, 6);
+            }
+            case MOVE -> {
+                gc.setFill(Color.color(1.0, 0.84, 0.0, 0.20));
+                gc.fillPolygon(xPoints, yPoints, 6);
+
+                gc.setStroke(Color.GOLD);
+                gc.setLineWidth(4);
+                gc.strokePolygon(xPoints, yPoints, 6);
+            }
+            case ATTACK -> {
+                gc.setFill(Color.color(1.0, 0.2, 0.2, 0.20));
+                gc.fillPolygon(xPoints, yPoints, 6);
+
+                gc.setStroke(Color.RED);
+                gc.setLineWidth(4);
+                gc.strokePolygon(xPoints, yPoints, 6);
+            }
+        }
     }
 
     private Image resolveTileImage(HexTile tile) {
