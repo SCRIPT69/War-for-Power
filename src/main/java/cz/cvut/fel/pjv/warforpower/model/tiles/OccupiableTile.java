@@ -10,7 +10,7 @@ import java.util.List;
  * Abstract tile type that can contain units standing on it.
  */
 public abstract class OccupiableTile extends HexTile {
-    private static final int MAX_UNITS = 2;
+    public static final int MAX_UNITS = 2;
     private final List<Unit> standingUnits = new ArrayList<>(MAX_UNITS);
 
     public OccupiableTile(HexTileCoords tileCoords, HexTileType tileType) {

@@ -128,22 +128,12 @@ public class SelectionTileHighlightResolver {
             Unit first,
             Unit second) {
 
-        List<OccupiableTile> firstMovementOptions = game.getMovementOptions(first);
-        List<OccupiableTile> secondMovementOptions = game.getMovementOptions(second);
-
-        for (OccupiableTile tile : firstMovementOptions) {
-            if (secondMovementOptions.contains(tile)) {
-                highlights.put(tile.getTileCoords(), TileHighlightType.MOVE);
-            }
+        for (OccupiableTile tile : game.getSharedMovementOptions(first, second)) {
+            highlights.put(tile.getTileCoords(), TileHighlightType.MOVE);
         }
 
-        List<HexTile> firstAttackOptions = game.getAttackOptions(first);
-        List<HexTile> secondAttackOptions = game.getAttackOptions(second);
-
-        for (HexTile tile : firstAttackOptions) {
-            if (secondAttackOptions.contains(tile)) {
-                highlights.put(tile.getTileCoords(), TileHighlightType.ATTACK);
-            }
+        for (HexTile tile : game.getSharedAttackOptions(first, second)) {
+            highlights.put(tile.getTileCoords(), TileHighlightType.ATTACK);
         }
     }
 }

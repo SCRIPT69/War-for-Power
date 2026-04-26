@@ -173,6 +173,28 @@ public class Game {
     }
 
     /**
+     * Returns movement tiles that two units may enter together.
+     *
+     * @param first first unit
+     * @param second second unit
+     * @return shared movement target tiles
+     */
+    public List<OccupiableTile> getSharedMovementOptions(Unit first, Unit second) {
+        return unitActionTilesResolver.getSharedMovementOptions(first, second);
+    }
+
+    /**
+     * Returns attack tiles that two units may attack together.
+     *
+     * @param first first unit
+     * @param second second unit
+     * @return shared attack target tiles
+     */
+    public List<HexTile> getSharedAttackOptions(Unit first, Unit second) {
+        return unitActionTilesResolver.getSharedAttackOptions(first, second);
+    }
+
+    /**
      * Moves the given unit to the target tile if the move is valid.
      *
      * @param unit unit to move
@@ -213,6 +235,71 @@ public class Game {
                 unit.getOwner().getDisplayLabel(),
                 unit.getUnitType(),
                 oldTile.getTileCoords(),
+                targetTile.getTileCoords());
+    }
+    /**
+     * Moves two units to the same target tile if the shared move is valid.
+     *
+     * @param first first unit to move
+     * @param second second unit to move
+     * @param targetTile destination tile
+     * @throws IllegalArgumentException if arguments are invalid
+     * @throws IllegalStateException if the move is not allowed
+     */
+    public void moveUnitsToTile(Unit first, Unit second, OccupiableTile targetTile) {
+        if (first == null || second == null) {
+            throw new IllegalArgumentException("Units cannot be null.");
+        }
+        if (targetTile == null) {
+            throw new IllegalArgumentException("Target tile cannot be null.");
+        }
+        if (first == second) {
+            throw new IllegalArgumentException("Two different units are required for shared movement.");
+        }
+
+        if (first.getOwner() != second.getOwner()) {
+            throw new IllegalStateException("Both units must belong to the same player.");
+        }
+        Player owner = first.getOwner();
+        if (owner.isEliminated()) {
+            throw new IllegalStateException("Eliminated player cannot move units.");
+        }
+        if (owner != currentPlayer) {
+            throw new IllegalStateException("Only current player's units can be moved.");
+        }
+
+        if (first.hasUsedMainActionThisRound() || second.hasUsedMainActionThisRound()) {
+            throw new IllegalStateException("Both units must still have their main action available.");
+        }
+        if (!getSharedMovementOptions(first, second).contains(targetTile)) {
+            throw new IllegalStateException("Invalid tile for shared movement.");
+        }
+
+        OccupiableTile firstOldTile = first.getOccupiedTile();
+        OccupiableTile secondOldTile = second.getOccupiedTile();
+
+        firstOldTile.removeUnit(first);
+        secondOldTile.removeUnit(second);
+
+        targetTile.addUnit(first);
+        targetTile.addUnit(second);
+
+        first.setOccupiedTile(targetTile);
+        second.setOccupiedTile(targetTile);
+
+        first.markUsedMainActionThisRound();
+        second.markUsedMainActionThisRound();
+
+        if (targetTile instanceof BaseTile baseTile && baseTile.getOwner() != first.getOwner()) {
+            captureBase(first.getOwner(), baseTile);
+        }
+
+        LOGGER.info("Player {} moved {} from {} and {} from {} to {}.",
+                first.getOwner().getDisplayLabel(),
+                first.getUnitType(),
+                firstOldTile.getTileCoords(),
+                second.getUnitType(),
+                secondOldTile.getTileCoords(),
                 targetTile.getTileCoords());
     }
 

@@ -136,4 +136,89 @@ public class UnitActionTilesResolver {
             throw new IllegalStateException("Unit has already used its main action this round.");
         }
     }
+
+
+    /**
+     * Returns movement tiles that two units may enter together.
+     * A shared movement tile must be reachable by both units individually
+     * and must have enough free capacity for both incoming units.
+     *
+     * @param first first unit
+     * @param second second unit
+     * @return valid shared movement target tiles
+     */
+    public List<OccupiableTile> getSharedMovementOptions(Unit first, Unit second) {
+        validateUnitsForSharedActionQuery(first, second);
+
+        List<OccupiableTile> firstOptions = getMovementOptions(first);
+        List<OccupiableTile> secondOptions = getMovementOptions(second);
+
+        List<OccupiableTile> sharedOptions = new ArrayList<>();
+        for (OccupiableTile tile : firstOptions) {
+            if (secondOptions.contains(tile) && canUnitsMoveTogetherToTile(first, second, tile)) {
+                sharedOptions.add(tile);
+            }
+        }
+
+        return sharedOptions;
+    }
+
+    /**
+     * Returns attack tiles that both units may attack together.
+     *
+     * @param first first unit
+     * @param second second unit
+     * @return valid shared attack target tiles
+     */
+    public List<HexTile> getSharedAttackOptions(Unit first, Unit second) {
+        validateUnitsForSharedActionQuery(first, second);
+
+        List<HexTile> firstOptions = getAttackOptions(first);
+        List<HexTile> secondOptions = getAttackOptions(second);
+
+        List<HexTile> sharedOptions = new ArrayList<>();
+        for (HexTile tile : firstOptions) {
+            if (secondOptions.contains(tile)) {
+                sharedOptions.add(tile);
+            }
+        }
+
+        return sharedOptions;
+    }
+
+    /**
+     * Checks whether two units may move together to the same target tile.
+     * Both units must be distinct and the resulting number of units
+     * on the tile must not exceed tile capacity.
+     *
+     * @param first first unit
+     * @param second second unit
+     * @param targetTile shared movement target tile
+     * @return true if both units may enter the tile together
+     */
+    private boolean canUnitsMoveTogetherToTile(Unit first, Unit second, OccupiableTile targetTile) {
+        if (first == second) {
+            return false;
+        }
+
+        int currentUnitsOnTile = targetTile.getStandingUnits().size();
+        int futureUnitsOnTile = currentUnitsOnTile + 2;
+
+        return futureUnitsOnTile <= OccupiableTile.MAX_UNITS;
+    }
+
+    /**
+     * Validates that two units may be queried together for shared actions.
+     *
+     * @param first first unit
+     * @param second second unit
+     */
+    private void validateUnitsForSharedActionQuery(Unit first, Unit second) {
+        validateUnitForActionQuery(first);
+        validateUnitForActionQuery(second);
+
+        if (first == second) {
+            throw new IllegalArgumentException("Shared action query requires two different units.");
+        }
+    }
 }

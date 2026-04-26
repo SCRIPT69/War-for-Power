@@ -4,6 +4,7 @@ import cz.cvut.fel.pjv.warforpower.model.game.Game;
 import cz.cvut.fel.pjv.warforpower.model.players.Player;
 import cz.cvut.fel.pjv.warforpower.model.tiles.BaseTile;
 import cz.cvut.fel.pjv.warforpower.model.tiles.HexTileCoords;
+import cz.cvut.fel.pjv.warforpower.model.tiles.OccupiableTile;
 import cz.cvut.fel.pjv.warforpower.model.units.UnitType;
 import cz.cvut.fel.pjv.warforpower.model.units.Unit;
 import cz.cvut.fel.pjv.warforpower.view.PlayerColorCssMapper;
@@ -17,6 +18,7 @@ import javafx.scene.Parent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -34,6 +36,7 @@ public class GameController {
 
     private final TurnTimerService timerService;
     private final SelectionTileHighlightResolver tileHighlightResolver;
+    private Map<HexTileCoords, TileHighlightType> currentTileHighlights;
 
     /**
      * Creates a controller for a new game with the given number of players.
@@ -47,6 +50,7 @@ public class GameController {
         this.unitSelection = new UnitSelection();
         this.timerService = new TurnTimerService();
         this.tileHighlightResolver = new SelectionTileHighlightResolver(game);
+        this.currentTileHighlights = new HashMap<>();
     }
 
     /**
@@ -91,14 +95,7 @@ public class GameController {
 
         // Tile clicks are handled centrally by the controller
         gameView.setOnTileClicked(this::handleTileClicked);
-
-        // Only bases of the current player are treated as interactive tiles
-        gameView.setTileInteractivePredicate(coords -> {
-            if (!(game.getGameMap().getTile(coords) instanceof BaseTile baseTile)) {
-                return false;
-            }
-            return interactionRules.isBaseInteractive(baseTile);
-        });
+        gameView.setTileInteractivePredicate(this::isTileInteractive);
 
         // Recruitment buttons attempt to buy a unit on the currently selected base
         for (UnitType unitType : UnitType.values()) {
@@ -118,30 +115,115 @@ public class GameController {
         }
     }
     /**
-     * Handles tile click input and opens or closes the purchase menu
-     * depending on whether the clicked tile is currently interactive.
+     * Returns whether the specified tile is currently interactive.
+     * A tile is interactive if it is highlighted as a movement tile,
+     * or if it is an interactive base.
+     *
+     * @param coords tile coordinates
+     * @return true if the tile is currently interactive
+     */
+    private boolean isTileInteractive(HexTileCoords coords) {
+        return isMoveTile(coords) || isInteractiveBaseTile(coords);
+    }
+
+    /**
+     * Handles tile click input and routes it to movement, base interaction,
+     * or generic deselection logic depending on the clicked tile.
      *
      * @param coords clicked tile coordinates
      */
     private void handleTileClicked(HexTileCoords coords) {
-        unitSelection.clear();
+        if (isMoveTile(coords)){
+            handleMovementClicked(coords);
+            return;
+        }
+        else if (isInteractiveBaseTile(coords)) {
+            handleBaseClicked(coords);
+            return;
+        }
+        handleEmptyOrNonInteractiveTileClicked();
+    }
 
+    /**
+     * Returns whether the specified tile is currently highlighted
+     * as a valid movement target.
+     *
+     * @param coords tile coordinates
+     * @return true if the tile is a movement-highlighted tile
+     */
+    private boolean isMoveTile(HexTileCoords coords) {
+        return currentTileHighlights.get(coords) == TileHighlightType.MOVE;
+    }
+
+    /**
+     * Returns whether the specified tile is an interactive base
+     * of the current player.
+     *
+     * @param coords tile coordinates
+     * @return true if the tile is an interactive base
+     */
+    private boolean isInteractiveBaseTile(HexTileCoords coords) {
         if (!(game.getGameMap().getTile(coords) instanceof BaseTile baseTile)) {
-            clearBaseSelection();
-            refreshView();
+            return false;
+        }
+        return interactionRules.isBaseInteractive(baseTile);
+    }
+
+    /**
+     * Handles click on an empty or currently non-interactive tile.
+     * Clears current unit/base selection and refreshes map-related visuals.
+     */
+    private void handleEmptyOrNonInteractiveTileClicked() {
+        unitSelection.clear();
+        clearBaseSelection();
+        refreshMapLayers();
+    }
+
+    /**
+     * Handles click on a tile highlighted as a valid movement target.
+     * Currently supports movement of exactly one selected unit.
+     *
+     * @param coords clicked target tile coordinates
+     */
+    private void handleMovementClicked(HexTileCoords coords) {
+        clearBaseSelection();
+
+        int selectedCount = unitSelection.size();
+        if (selectedCount != 1 && selectedCount != 2) {
             return;
         }
 
-        if (!interactionRules.isBaseInteractive(baseTile)) {
-            clearBaseSelection();
-            refreshView();
-            return;
+        if (!(game.getGameMap().getTile(coords) instanceof OccupiableTile tile)) {
+            throw new IllegalArgumentException("Can not move on not occupiable tile");
         }
 
-        selectedBaseCoords = coords;
+        if (selectedCount == 1) {
+            Unit selectedUnit = unitSelection.getFirstSelectedUnit();
+            game.moveUnitToTile(selectedUnit, tile);
+        }
+        else {
+            Unit first = unitSelection.getSelectedUnits().getFirst();
+            Unit second = unitSelection.getSelectedUnits().get(1);
+            game.moveUnitsToTile(first, second, tile);
+        }
 
+        unitSelection.clear();
+        refreshMapLayers();
+    }
+
+    /**
+     * Handles click on an interactive base tile.
+     * Clears current unit selection, refreshes map visuals
+     * and opens the purchase menu for the selected base.
+     *
+     * @param coords clicked base tile coordinates
+     */
+    private void handleBaseClicked(HexTileCoords coords) {
+        clearBaseSelection();
+        unitSelection.clear();
         refreshMapLayers();
 
+        selectedBaseCoords = coords;
         ScreenPosition position = calculatePurchaseMenuPosition(gameView.getTileScreenPosition(coords));
         gameView.showPurchaseMenuAt(position.x(), position.y());
 
@@ -204,10 +286,10 @@ public class GameController {
     private void updateTileHighlights() {
         gameView.clearTileHighlights();
 
-        Map<HexTileCoords, TileHighlightType> highlights =
+        currentTileHighlights =
                 tileHighlightResolver.resolve(unitSelection, game.getCurrentPlayer(), game.getCurrentRound());
 
-        for (Map.Entry<HexTileCoords, TileHighlightType> entry : highlights.entrySet()) {
+        for (Map.Entry<HexTileCoords, TileHighlightType> entry : currentTileHighlights.entrySet()) {
             gameView.addTileHighlight(entry.getKey(), entry.getValue());
         }
     }
@@ -268,8 +350,6 @@ public class GameController {
                 currentPlayer.getMoney(),
                 game.getCurrentRound()
         );
-
-        updateTileHighlights();
 
         // Close temporary UI from the previous turn and redraw map layers.
         gameView.hidePurchaseMenu();

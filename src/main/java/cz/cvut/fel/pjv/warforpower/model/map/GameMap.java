@@ -190,11 +190,16 @@ public class GameMap {
         addTileIfValid(neighbours, new HexTileCoords(rowIndex, tileIndex - 1));
         addTileIfValid(neighbours, new HexTileCoords(rowIndex, tileIndex + 1));
 
-        if (rowIndex <= 4) {
+        if (rowIndex < 4) {
+            addTileIfValid(neighbours, new HexTileCoords(rowIndex - 1, tileIndex - 1));
             addTileIfValid(neighbours, new HexTileCoords(rowIndex - 1, tileIndex));
-            addTileIfValid(neighbours, new HexTileCoords(rowIndex - 1, tileIndex + 1));
             addTileIfValid(neighbours, new HexTileCoords(rowIndex + 1, tileIndex));
             addTileIfValid(neighbours, new HexTileCoords(rowIndex + 1, tileIndex + 1));
+        } else if (rowIndex == 4) {
+            addTileIfValid(neighbours, new HexTileCoords(rowIndex - 1, tileIndex - 1));
+            addTileIfValid(neighbours, new HexTileCoords(rowIndex - 1, tileIndex));
+            addTileIfValid(neighbours, new HexTileCoords(rowIndex + 1, tileIndex - 1));
+            addTileIfValid(neighbours, new HexTileCoords(rowIndex + 1, tileIndex));
         } else {
             addTileIfValid(neighbours, new HexTileCoords(rowIndex - 1, tileIndex));
             addTileIfValid(neighbours, new HexTileCoords(rowIndex - 1, tileIndex + 1));

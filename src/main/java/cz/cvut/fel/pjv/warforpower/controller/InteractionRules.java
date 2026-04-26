@@ -94,24 +94,7 @@ public class InteractionRules {
             return false;
         }
 
-        List<OccupiableTile> firstOptions = game.getMovementOptions(first);
-        List<OccupiableTile> secondOptions = game.getMovementOptions(second);
-
-        for (OccupiableTile firstTile : firstOptions) {
-            if (secondOptions.contains(firstTile)) {
-                return true;
-            }
-        }
-
-        List<HexTile> firstAttackOptions = game.getAttackOptions(first);
-        List<HexTile> secondAttackOptions = game.getAttackOptions(second);
-
-        for (HexTile tile : firstAttackOptions) {
-            if (secondAttackOptions.contains(tile)) {
-                return true;
-            }
-        }
-
-        return false;
+        return !game.getSharedMovementOptions(first, second).isEmpty()
+                || !game.getSharedAttackOptions(first, second).isEmpty();
     }
 }
