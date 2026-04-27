@@ -8,10 +8,13 @@ import cz.cvut.fel.pjv.warforpower.model.units.Unit;
 import cz.cvut.fel.pjv.warforpower.view.ScreenPosition;
 import cz.cvut.fel.pjv.warforpower.view.UIConstants;
 import cz.cvut.fel.pjv.warforpower.view.game.tiles.HexTilesPositionGenerator;
+import javafx.animation.AnimationTimer;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 
 import javafx.scene.paint.Color;
+
+import java.util.ArrayList;
 import java.util.Set;
 import java.util.List;
 
@@ -45,6 +48,83 @@ public class UnitLayerView {
         return canvas;
     }
 
+
+    private GameMap lastRenderedMap;
+
+    private final List<UnitMoveAnimation> activeAnimations = new ArrayList<>();
+    private final AnimationTimer movementTimer = new AnimationTimer() {
+        @Override
+        public void handle(long now) {
+            if (activeAnimations.isEmpty()) {
+                stop();
+                return;
+            }
+
+            activeAnimations.removeIf(animation -> animation.isFinished(now));
+
+            if (lastRenderedMap != null) {
+                renderUnits(lastRenderedMap);
+            }
+
+            if (activeAnimations.isEmpty()) {
+                stop();
+            }
+        }
+    };
+
+    /**
+     * Starts smooth movement animation of the specified unit
+     * between two tile positions.
+     *
+     * @param unit animated unit
+     * @param fromTilePosition source tile screen position
+     * @param toTilePosition target tile screen position
+     */
+    public void animateUnitMovement(Unit unit,
+                                    ScreenPosition fromTilePosition,
+                                    ScreenPosition toTilePosition) {
+        if (unit == null) {
+            throw new IllegalArgumentException("Unit cannot be null.");
+        }
+        if (fromTilePosition == null || toTilePosition == null) {
+            throw new IllegalArgumentException("Animation positions cannot be null.");
+        }
+
+        ScreenPosition from = UnitPositionCalculator.forTile(fromTilePosition, 1).getFirst();
+        ScreenPosition to = UnitPositionCalculator.forTile(toTilePosition, 1).getFirst();
+
+        activeAnimations.add(new UnitMoveAnimation(
+                unit,
+                from,
+                to,
+                System.nanoTime(),
+                220_000_000L
+        ));
+
+        movementTimer.start();
+    }
+
+    private boolean isUnitAnimating(Unit unit) {
+        for (UnitMoveAnimation animation : activeAnimations) {
+            if (animation.unit == unit) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void renderActiveAnimations(long now) {
+        for (UnitMoveAnimation animation : activeAnimations) {
+            ScreenPosition currentPosition = animation.getCurrentPosition(now);
+            UnitIconRenderer.draw(gc, animation.unit, currentPosition);
+
+            if (selectedUnits.contains(animation.unit)) {
+                drawSelectionFrame(currentPosition);
+            }
+        }
+    }
+
+
     /**
      * Updates currently selected units for highlight rendering.
      *
@@ -60,6 +140,8 @@ public class UnitLayerView {
      * @param gameMap current game map
      */
     public void renderUnits(GameMap gameMap) {
+        this.lastRenderedMap = gameMap;
+
         gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
 
         for (int rowIndex = 0; rowIndex < gameMap.getRowsNumber(); rowIndex++) {
@@ -73,6 +155,8 @@ public class UnitLayerView {
                 }
             }
         }
+
+        renderActiveAnimations(System.nanoTime());
     }
 
     /**
@@ -90,8 +174,12 @@ public class UnitLayerView {
 
         for (int i = 0; i < units.size(); i++) {
             Unit unit = units.get(i);
-            ScreenPosition position = positions.get(i);
 
+            if (isUnitAnimating(unit)) {
+                continue;
+            }
+
+            ScreenPosition position = positions.get(i);
             UnitIconRenderer.draw(gc, unit, position);
 
             if (selectedUnits.contains(unit)) {
@@ -156,5 +244,40 @@ public class UnitLayerView {
         double dx = mouseX - center.x();
         double dy = mouseY - center.y();
         return dx * dx + dy * dy <= UNIT_HIT_RADIUS * UNIT_HIT_RADIUS;
+    }
+
+    private static class UnitMoveAnimation {
+        private final Unit unit;
+        private final ScreenPosition from;
+        private final ScreenPosition to;
+        private final long startNanos;
+        private final long durationNanos;
+
+        private UnitMoveAnimation(Unit unit,
+                                  ScreenPosition from,
+                                  ScreenPosition to,
+                                  long startNanos,
+                                  long durationNanos) {
+            this.unit = unit;
+            this.from = from;
+            this.to = to;
+            this.startNanos = startNanos;
+            this.durationNanos = durationNanos;
+        }
+
+        private boolean isFinished(long now) {
+            return now - startNanos >= durationNanos;
+        }
+
+        private ScreenPosition getCurrentPosition(long now) {
+            double progress = Math.min(1.0, (double) (now - startNanos) / durationNanos);
+
+            double eased = 1 - Math.pow(1 - progress, 2); // ease-out
+
+            double x = from.x() + (to.x() - from.x()) * eased;
+            double y = from.y() + (to.y() - from.y()) * eased;
+
+            return new ScreenPosition(x, y);
+        }
     }
 }

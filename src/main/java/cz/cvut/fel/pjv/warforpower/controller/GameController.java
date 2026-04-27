@@ -186,12 +186,12 @@ public class GameController {
      * @param coords clicked target tile coordinates
      */
     private void handleMovementClicked(HexTileCoords coords) {
-        clearBaseSelection();
-
         int selectedCount = unitSelection.size();
         if (selectedCount != 1 && selectedCount != 2) {
             return;
         }
+
+        clearBaseSelection();
 
         if (!(game.getGameMap().getTile(coords) instanceof OccupiableTile tile)) {
             throw new IllegalArgumentException("Can not move on not occupiable tile");
@@ -199,12 +199,22 @@ public class GameController {
 
         if (selectedCount == 1) {
             Unit selectedUnit = unitSelection.getFirstSelectedUnit();
+            HexTileCoords fromCoords = selectedUnit.getOccupiedTile().getTileCoords();
+
             game.moveUnitToTile(selectedUnit, tile);
+            gameView.animateUnitMovement(selectedUnit, fromCoords, coords);
         }
         else {
             Unit first = unitSelection.getSelectedUnits().getFirst();
             Unit second = unitSelection.getSelectedUnits().get(1);
+
+            HexTileCoords firstFrom = first.getOccupiedTile().getTileCoords();
+            HexTileCoords secondFrom = second.getOccupiedTile().getTileCoords();
+
             game.moveUnitsToTile(first, second, tile);
+
+            gameView.animateUnitMovement(first, firstFrom, coords);
+            gameView.animateUnitMovement(second, secondFrom, coords);
         }
 
         unitSelection.clear();

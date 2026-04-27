@@ -123,6 +123,20 @@ public class GameView {
         unitLayerView.renderUnits(gameMap);
     }
 
+    /**
+     * Starts smooth animation of a unit between two map tiles.
+     *
+     * @param unit animated unit
+     * @param fromCoords source tile coordinates
+     * @param toCoords target tile coordinates
+     */
+    public void animateUnitMovement(Unit unit, HexTileCoords fromCoords, HexTileCoords toCoords) {
+        ScreenPosition fromTilePosition = gameMapView.getTileScreenPosition(fromCoords);
+        ScreenPosition toTilePosition = gameMapView.getTileScreenPosition(toCoords);
+
+        unitLayerView.animateUnitMovement(unit, fromTilePosition, toTilePosition);
+    }
+
     public Button getEndTurnButton() {
         return topPanelView.getEndTurnButton();
     }
