@@ -156,6 +156,15 @@ public class GameView {
     }
 
     /**
+     * Enables or disables the end turn button.
+     *
+     * @param disabled true if the button should be disabled
+     */
+    public void setEndTurnButtonDisabled(boolean disabled) {
+        topPanelView.setEndTurnButtonDisabled(disabled);
+    }
+
+    /**
      * Renders units on the unit layer and highlights currently selected units.
      *
      * @param gameMap current game map
@@ -178,6 +187,26 @@ public class GameView {
         ScreenPosition toTilePosition = gameMapView.getTileScreenPosition(toCoords);
 
         unitLayerView.animateUnitMovement(unit, fromTilePosition, toTilePosition);
+    }
+
+    /**
+     * Enables battle render state on the specified tile.
+     *
+     * @param tileCoords battle tile coordinates
+     * @param attackers attacking units
+     * @param defenders defending units
+     */
+    public void showBattleState(HexTileCoords tileCoords, List<Unit> attackers, List<Unit> defenders) {
+        unitLayerView.showBattleState(tileCoords, attackers, defenders);
+        unitLayerView.renderUnits(gameMap);
+    }
+
+    /**
+     * Clears current battle render state.
+     */
+    public void clearBattleState() {
+        unitLayerView.clearBattleState();
+        unitLayerView.renderUnits(gameMap);
     }
 
     public Button getEndTurnButton() {

@@ -29,6 +29,9 @@ public class UnitLayerView {
     private static final double UNIT_HIT_RADIUS = 20;
     private static final double SELECTION_FRAME_WIDTH = 36;
     private static final double SELECTION_FRAME_HEIGHT = 36;
+    private HexTileCoords battleTileCoords;
+    private List<Unit> battleAttackers = List.of();
+    private List<Unit> battleDefenders = List.of();
 
     private Set<Unit> selectedUnits = Set.of();
 
@@ -156,6 +159,7 @@ public class UnitLayerView {
             }
         }
 
+        renderBattleState();
         renderActiveAnimations(System.nanoTime());
     }
 
@@ -168,14 +172,26 @@ public class UnitLayerView {
      * @param tilePosition top-left screen position of the tile
      */
     private void renderUnitsOnTile(OccupiableTile tile, ScreenPosition tilePosition) {
-        List<Unit> units = tile.getStandingUnits();
+        List<Unit> visibleUnits = new ArrayList<>();
+
+        for (Unit unit : tile.getStandingUnits()) {
+            if (isUnitAnimating(unit) || isUnitInBattleState(unit)) {
+                continue;
+            }
+            visibleUnits.add(unit);
+        }
+
+        if (visibleUnits.isEmpty()) {
+            return;
+        }
+
         List<ScreenPosition> positions =
-                UnitPositionCalculator.forTile(tilePosition, units.size());
+                UnitPositionCalculator.forTile(tilePosition, visibleUnits.size());
 
-        for (int i = 0; i < units.size(); i++) {
-            Unit unit = units.get(i);
+        for (int i = 0; i < visibleUnits.size(); i++) {
+            Unit unit = visibleUnits.get(i);
 
-            if (isUnitAnimating(unit)) {
+            if (isUnitAnimating(unit) || isUnitInBattleState(unit)) {
                 continue;
             }
 
@@ -224,8 +240,14 @@ public class UnitLayerView {
                 List<ScreenPosition> positions = UnitPositionCalculator.forTile(tilePosition, units.size());
 
                 for (int i = 0; i < units.size(); i++) {
+                    Unit unit = units.get(i);
+
+                    if (isUnitAnimating(unit) || isUnitInBattleState(unit)) {
+                        continue;
+                    }
+
                     if (isInsideUnitIcon(mouseX, mouseY, positions.get(i))) {
-                        return units.get(i);
+                        return unit;
                     }
                 }
             }
@@ -278,6 +300,83 @@ public class UnitLayerView {
             double y = from.y() + (to.y() - from.y()) * eased;
 
             return new ScreenPosition(x, y);
+        }
+    }
+
+    /**
+     * Enables battle render state on the specified tile.
+     * Units participating in battle are rendered on the target tile
+     * instead of their normal positions.
+     *
+     * @param tileCoords battle tile coordinates
+     * @param attackers attacking units
+     * @param defenders defending units
+     */
+    public void showBattleState(HexTileCoords tileCoords, List<Unit> attackers, List<Unit> defenders) {
+        if (tileCoords == null) {
+            throw new IllegalArgumentException("Battle tile coordinates cannot be null.");
+        }
+        if (attackers == null || attackers.isEmpty()) {
+            throw new IllegalArgumentException("Battle must have at least one attacker.");
+        }
+        if (defenders == null) {
+            throw new IllegalArgumentException("Defenders list cannot be null.");
+        }
+
+        this.battleTileCoords = tileCoords;
+        this.battleAttackers = List.copyOf(attackers);
+        this.battleDefenders = List.copyOf(defenders);
+    }
+
+    /**
+     * Clears current battle render state.
+     */
+    public void clearBattleState() {
+        battleTileCoords = null;
+        battleAttackers = List.of();
+        battleDefenders = List.of();
+    }
+
+    private boolean isUnitInBattleState(Unit unit) {
+        return battleAttackers.contains(unit) || battleDefenders.contains(unit);
+    }
+
+    /**
+     * Renders units participating in battle on the target tile.
+     * Attackers are placed on the left side, defenders on the right side.
+     */
+    private void renderBattleState() {
+        if (battleTileCoords == null) {
+            return;
+        }
+
+        ScreenPosition tilePosition = positionGenerator.getTilePosition(
+                battleTileCoords.rowIndex(),
+                battleTileCoords.tileIndex()
+        );
+
+        double centerX = tilePosition.x() + 35.5;
+        double centerY = tilePosition.y() + 40 + 6;
+
+        UnitsPositionsInBattle positions = UnitPositionCalculator.forBattle(
+                centerX,
+                centerY,
+                battleAttackers.size(),
+                battleDefenders.size()
+        );
+
+        for (int i = 0; i < battleAttackers.size(); i++) {
+            ScreenPosition position = positions.attackerPositions().get(i);
+            Unit attacker = battleAttackers.get(i);
+
+            UnitIconRenderer.draw(gc, attacker, position);
+        }
+
+        for (int i = 0; i < battleDefenders.size(); i++) {
+            ScreenPosition position = positions.defenderPositions().get(i);
+            Unit defender = battleDefenders.get(i);
+
+            UnitIconRenderer.draw(gc, defender, position);
         }
     }
 }

@@ -14,13 +14,16 @@ import cz.cvut.fel.pjv.warforpower.view.UIConstants;
 import cz.cvut.fel.pjv.warforpower.view.game.GameView;
 
 import cz.cvut.fel.pjv.warforpower.view.game.TileHighlightType;
+import javafx.animation.PauseTransition;
 import javafx.scene.Parent;
 import javafx.application.Platform;
 
+import javafx.util.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -39,6 +42,9 @@ public class GameController {
     private final TurnTimerService timerService;
     private final SelectionTileHighlightResolver tileHighlightResolver;
     private Map<HexTileCoords, TileHighlightType> currentTileHighlights;
+
+    private static final int ATTACK_ENTRY_ANIMATION_MILLIS = 220;
+    private boolean battleInProgress = false;
 
     /**
      * Creates a controller for a new game with the given number of players.
@@ -68,6 +74,11 @@ public class GameController {
      * Ends the current player's turn and refreshes the visible game state.
      */
     private void handleEndTurn() {
+        if (battleInProgress) {
+            LOGGER.debug("Ignored end turn request during battle.");
+            return;
+        }
+
         LOGGER.info("End turn requested by user.");
         unitSelection.clear();
 
@@ -120,6 +131,55 @@ public class GameController {
             });
         }
     }
+
+    /**
+     * Returns whether the specified tile may currently be bought
+     * by the current player.
+     *
+     * @param coords tile coordinates
+     * @return true if the terrain tile may be bought
+     */
+    private boolean isPurchasableTile(HexTileCoords coords) {
+        if (!(game.getGameMap().getTile(coords) instanceof TerrainTile terrainTile)) {
+            return false;
+        }
+
+        return interactionRules.canBuyTerrainTile(terrainTile);
+    }
+    /**
+     * Returns whether the specified tile is currently highlighted
+     * as a valid attack target.
+     *
+     * @param coords tile coordinates
+     * @return true if the tile is an attack-highlighted tile
+     */
+    private boolean isAttackTile(HexTileCoords coords) {
+        return currentTileHighlights.get(coords) == TileHighlightType.ATTACK;
+    }
+    /**
+     * Returns whether the specified tile is currently highlighted
+     * as a valid movement target.
+     *
+     * @param coords tile coordinates
+     * @return true if the tile is a movement-highlighted tile
+     */
+    private boolean isMoveTile(HexTileCoords coords) {
+        return currentTileHighlights.get(coords) == TileHighlightType.MOVE;
+    }
+    /**
+     * Returns whether the specified tile is an interactive base
+     * of the current player.
+     *
+     * @param coords tile coordinates
+     * @return true if the tile is an interactive base
+     */
+    private boolean isInteractiveBaseTile(HexTileCoords coords) {
+        if (!(game.getGameMap().getTile(coords) instanceof BaseTile baseTile)) {
+            return false;
+        }
+        return interactionRules.isBaseInteractive(baseTile);
+    }
+
     /**
      * Returns whether the specified tile is currently interactive.
      *
@@ -127,7 +187,12 @@ public class GameController {
      * @return true if the tile is currently interactive
      */
     private boolean isTileInteractive(HexTileCoords coords) {
+        if (battleInProgress) {
+            return false;
+        }
+
         return isMoveTile(coords)
+                || isAttackTile(coords)
                 || isInteractiveBaseTile(coords)
                 || isPurchasableTile(coords);
     }
@@ -176,29 +241,22 @@ public class GameController {
     }
 
     /**
-     * Returns whether the specified tile may currently be bought
-     * by the current player.
-     *
-     * @param coords tile coordinates
-     * @return true if the terrain tile may be bought
-     */
-    private boolean isPurchasableTile(HexTileCoords coords) {
-        if (!(game.getGameMap().getTile(coords) instanceof TerrainTile terrainTile)) {
-            return false;
-        }
-
-        return interactionRules.canBuyTerrainTile(terrainTile);
-    }
-
-    /**
-     * Handles tile click input and routes it to movement, base interaction,
-     * or generic deselection logic depending on the clicked tile.
+     * Handles tile click input and routes it to movement, attack,
+     * tile purchase, base interaction or generic deselection logic.
      *
      * @param coords clicked tile coordinates
      */
     private void handleTileClicked(HexTileCoords coords) {
+        if (battleInProgress) {
+            return;
+        }
+
         if (isMoveTile(coords)){
             handleMovementClicked(coords);
+            return;
+        }
+        if (isAttackTile(coords)) {
+            handleAttackTileClicked(coords);
             return;
         }
         if (isPurchasableTile(coords)) {
@@ -213,11 +271,108 @@ public class GameController {
     }
 
     /**
+     * Handles click on a tile highlighted as a valid attack target.
+     * Currently opens attack confirmation for city targets.
+     *
+     * @param coords clicked target tile coordinates
+     */
+    private void handleAttackTileClicked(HexTileCoords coords) {
+        if (battleInProgress) {
+            return;
+        }
+
+        ScreenPosition tilePosition = gameView.getTileScreenPosition(coords);
+        ScreenPosition popupPosition = calculateConfirmationMenuPosition(tilePosition);
+
+        clearTemporaryMenus();
+
+        gameView.showConfirmationMenu(
+                "Do you want to attack?",
+                popupPosition.x(),
+                popupPosition.y(),
+                () -> confirmAttack(coords),
+                () -> {
+                    gameView.hideConfirmationMenu();
+                    refreshMapLayers();
+                }
+        );
+    }
+    /**
+     * Confirms attack against the specified target tile.
+     *
+     * @param coords attacked tile coordinates
+     */
+    private void confirmAttack(HexTileCoords coords) {
+        gameView.hideConfirmationMenu();
+        pauseTurnTimer();
+
+        battleInProgress = true;
+        gameView.setEndTurnButtonDisabled(true);
+
+        LOGGER.info("Battle started on tile {}.", coords);
+
+        startBattle(coords);
+    }
+    /**
+     * Starts battle flow for the specified attacked tile.
+     * Attackers are rendered on the target tile in battle state.
+     *
+     * @param coords attacked tile coordinates
+     */
+    private void startBattle(HexTileCoords coords) {
+        if (coords == null) {
+            throw new IllegalArgumentException("Battle tile coordinates cannot be null.");
+        }
+
+        List<Unit> attackers = List.copyOf(unitSelection.getSelectedUnits());
+        List<Unit> defenders = List.of();
+
+        if (game.getGameMap().getTile(coords) instanceof OccupiableTile occupiableTile) {
+            defenders = List.copyOf(occupiableTile.getStandingUnits());
+        }
+
+        for (Unit attacker : attackers) {
+            HexTileCoords fromCoords = attacker.getOccupiedTile().getTileCoords();
+            gameView.animateUnitMovement(attacker, fromCoords, coords);
+        }
+
+        unitSelection.clear();
+        refreshMapLayers();
+
+        List<Unit> finalDefenders = defenders;
+        PauseTransition delay = new PauseTransition(Duration.millis(ATTACK_ENTRY_ANIMATION_MILLIS));
+        delay.setOnFinished(event -> {
+            gameView.showBattleState(coords, attackers, finalDefenders);
+            refreshMapLayers();
+
+            LOGGER.info("Battle state shown on tile {}.", coords);
+
+            // TODO: later connect actual battle controller / battle view
+        });
+        delay.play();
+    }
+
+    /**
+     * Finishes current battle view state and restores normal turn controls.
+     */
+    private void finishBattleState() {
+        battleInProgress = false;
+        gameView.clearBattleState();
+        gameView.setEndTurnButtonDisabled(false);
+        resumeTurnTimer();
+        refreshMapLayers();
+    }
+
+    /**
      * Handles click on a terrain tile that may be bought by the current player.
      *
      * @param coords clicked tile coordinates
      */
     private void handleTilePurchaseClicked(HexTileCoords coords) {
+        if (battleInProgress) {
+            return;
+        }
+
         if (!(game.getGameMap().getTile(coords) instanceof TerrainTile terrainTile)) {
             throw new IllegalArgumentException("Tile purchase is only possible on terrain tiles.");
         }
@@ -304,31 +459,6 @@ public class GameController {
     }
 
     /**
-     * Returns whether the specified tile is currently highlighted
-     * as a valid movement target.
-     *
-     * @param coords tile coordinates
-     * @return true if the tile is a movement-highlighted tile
-     */
-    private boolean isMoveTile(HexTileCoords coords) {
-        return currentTileHighlights.get(coords) == TileHighlightType.MOVE;
-    }
-
-    /**
-     * Returns whether the specified tile is an interactive base
-     * of the current player.
-     *
-     * @param coords tile coordinates
-     * @return true if the tile is an interactive base
-     */
-    private boolean isInteractiveBaseTile(HexTileCoords coords) {
-        if (!(game.getGameMap().getTile(coords) instanceof BaseTile baseTile)) {
-            return false;
-        }
-        return interactionRules.isBaseInteractive(baseTile);
-    }
-
-    /**
      * Handles click on an empty or currently non-interactive tile.
      * Clears current unit/base selection and refreshes map-related visuals.
      */
@@ -389,6 +519,10 @@ public class GameController {
      * @param coords clicked base tile coordinates
      */
     private void handleBaseClicked(HexTileCoords coords) {
+        if (battleInProgress) {
+            return;
+        }
+
         clearTemporaryMenus();
         unitSelection.clear();
         refreshMapLayers();
@@ -475,11 +609,19 @@ public class GameController {
      * @param shiftHeld true if shift was held during click
      */
     private void handleUnitClicked(Unit unit, boolean shiftHeld) {
+        if (battleInProgress) {
+            return;
+        }
         if (unit == null) {
             return;
         }
 
         HexTileCoords occupiedCoords = unit.getOccupiedTile().getTileCoords();
+
+        if (unit.getOwner() != game.getCurrentPlayer() && isAttackTile(occupiedCoords)) {
+            handleAttackTileClicked(occupiedCoords);
+            return;
+        }
 
         if (!interactionRules.isUnitInteractive(unit)
                 && !isPurchasableTile(occupiedCoords)) {
@@ -540,6 +682,7 @@ public class GameController {
         );
 
         clearTemporaryMenus();
+        gameView.setEndTurnButtonDisabled(battleInProgress);
         refreshMapLayers();
     }
 }

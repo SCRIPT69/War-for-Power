@@ -94,6 +94,15 @@ public class GameTopPanelView {
         return endTurnButton;
     }
 
+    /**
+     * Enables or disables the end turn button.
+     *
+     * @param disabled true if the button should be disabled
+     */
+    public void setEndTurnButtonDisabled(boolean disabled) {
+        endTurnButton.setDisable(disabled);
+    }
+
     public void update(String playerName, String playerColorCss, int coins, int round) {
         currentPlayerLabel.setText(playerName);
         currentPlayerLabel.setStyle(
