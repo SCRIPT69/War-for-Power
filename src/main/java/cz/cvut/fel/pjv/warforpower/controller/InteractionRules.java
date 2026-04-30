@@ -1,9 +1,11 @@
 package cz.cvut.fel.pjv.warforpower.controller;
 
 import cz.cvut.fel.pjv.warforpower.model.game.Game;
+import cz.cvut.fel.pjv.warforpower.model.players.Player;
 import cz.cvut.fel.pjv.warforpower.model.tiles.BaseTile;
 import cz.cvut.fel.pjv.warforpower.model.tiles.HexTile;
 import cz.cvut.fel.pjv.warforpower.model.tiles.OccupiableTile;
+import cz.cvut.fel.pjv.warforpower.model.tiles.TerrainTile;
 import cz.cvut.fel.pjv.warforpower.model.units.Unit;
 import cz.cvut.fel.pjv.warforpower.model.units.UnitType;
 
@@ -96,5 +98,42 @@ public class InteractionRules {
 
         return !game.getSharedMovementOptions(first, second).isEmpty()
                 || !game.getSharedAttackOptions(first, second).isEmpty();
+    }
+
+    /**
+     * Returns whether the current player may buy the specified terrain tile.
+     * A terrain tile may be bought if it is occupied by at least one unit
+     * of the current player, is not already owned by that player,
+     * and the player has enough money.
+     *
+     * @param tile terrain tile to check
+     * @return true if the tile may be bought
+     */
+    public boolean canBuyTerrainTile(TerrainTile tile) {
+        if (tile == null) {
+            throw new IllegalArgumentException("Terrain tile cannot be null.");
+        }
+
+        Player currentPlayer = game.getCurrentPlayer();
+        if (currentPlayer == null || currentPlayer.isEliminated()) {
+            return false;
+        }
+        if (tile.getOwner() == currentPlayer) {
+            return false;
+        }
+        if (currentPlayer.getMoney() < Game.PRICE_FOR_TILE) {
+            return false;
+        }
+        if (!tile.hasUnits()) {
+            return false;
+        }
+
+        for (Unit unit : tile.getStandingUnits()) {
+            if (unit.getOwner() == currentPlayer) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

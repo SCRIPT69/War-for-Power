@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.function.BiConsumer;
 import cz.cvut.fel.pjv.warforpower.view.ScreenPosition;
 import cz.cvut.fel.pjv.warforpower.view.UIConstants;
+import cz.cvut.fel.pjv.warforpower.view.game.menu.ConfirmationMenuView;
 import cz.cvut.fel.pjv.warforpower.view.game.unit.UnitLayerView;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
@@ -30,6 +31,7 @@ public class GameView {
     private final GameTopPanelView topPanelView =
             new GameTopPanelView(UIConstants.WINDOW_WIDTH - 80);
     private final UnitPurchaseMenuView purchaseMenuView = new UnitPurchaseMenuView();
+    private final ConfirmationMenuView confirmationMenuView = new ConfirmationMenuView();
     private final GameMap gameMap;
 
     public GameView(GameMap gameMap) {
@@ -46,7 +48,8 @@ public class GameView {
         root.getChildren().addAll(gameMapView.getCanvas(),
                 unitLayerView.getCanvas(),
                 topPanelView.getRoot(),
-                purchaseMenuView.getRoot());
+                purchaseMenuView.getRoot(),
+                confirmationMenuView.getRoot());
     }
 
     public Parent getRoot() {
@@ -55,6 +58,32 @@ public class GameView {
 
     public void renderMap() {
         gameMapView.renderMap();
+    }
+
+    /**
+     * Shows reusable confirmation menu.
+     *
+     * @param message popup message
+     * @param x screen x
+     * @param y screen y
+     * @param onConfirm confirm action
+     * @param onCancel cancel action
+     */
+    public void showConfirmationMenu(String message,
+                                     double x,
+                                     double y,
+                                     Runnable onConfirm,
+                                     Runnable onCancel) {
+        confirmationMenuView.setMessage(message);
+        confirmationMenuView.setOnConfirm(onConfirm);
+        confirmationMenuView.setOnCancel(onCancel);
+        confirmationMenuView.showAt(x, y);
+    }
+    /**
+     * Hides confirmation menu if visible.
+     */
+    public void hideConfirmationMenu() {
+        confirmationMenuView.hide();
     }
 
     public void setOnTileClicked(Consumer<HexTileCoords> onTileClicked) {

@@ -5,6 +5,7 @@ import cz.cvut.fel.pjv.warforpower.model.players.Player;
 import cz.cvut.fel.pjv.warforpower.model.tiles.BaseTile;
 import cz.cvut.fel.pjv.warforpower.model.tiles.HexTileCoords;
 import cz.cvut.fel.pjv.warforpower.model.tiles.OccupiableTile;
+import cz.cvut.fel.pjv.warforpower.model.tiles.TerrainTile;
 import cz.cvut.fel.pjv.warforpower.model.units.UnitType;
 import cz.cvut.fel.pjv.warforpower.model.units.Unit;
 import cz.cvut.fel.pjv.warforpower.view.PlayerColorCssMapper;
@@ -106,7 +107,7 @@ public class GameController {
 
                 try {
                     game.buyUnit(unitType, selectedBaseCoords);
-                    clearBaseSelection();
+                    clearTemporaryMenus();
                     refreshView();
                 } catch (IllegalArgumentException | IllegalStateException e) {
                     LOGGER.warn("Unit purchase failed: {}", e.getMessage());
@@ -116,14 +117,29 @@ public class GameController {
     }
     /**
      * Returns whether the specified tile is currently interactive.
-     * A tile is interactive if it is highlighted as a movement tile,
-     * or if it is an interactive base.
      *
      * @param coords tile coordinates
      * @return true if the tile is currently interactive
      */
     private boolean isTileInteractive(HexTileCoords coords) {
-        return isMoveTile(coords) || isInteractiveBaseTile(coords);
+        return isMoveTile(coords)
+                || isInteractiveBaseTile(coords)
+                || isPurchasableTile(coords);
+    }
+
+    /**
+     * Returns whether the specified tile may currently be bought
+     * by the current player.
+     *
+     * @param coords tile coordinates
+     * @return true if the terrain tile may be bought
+     */
+    private boolean isPurchasableTile(HexTileCoords coords) {
+        if (!(game.getGameMap().getTile(coords) instanceof TerrainTile terrainTile)) {
+            return false;
+        }
+
+        return interactionRules.canBuyTerrainTile(terrainTile);
     }
 
     /**
@@ -137,11 +153,106 @@ public class GameController {
             handleMovementClicked(coords);
             return;
         }
-        else if (isInteractiveBaseTile(coords)) {
+        if (isPurchasableTile(coords)) {
+            handleTilePurchaseClicked(coords);
+            return;
+        }
+        if (isInteractiveBaseTile(coords)) {
             handleBaseClicked(coords);
             return;
         }
         handleEmptyOrNonInteractiveTileClicked();
+    }
+
+    /**
+     * Handles click on a terrain tile that may be bought by the current player.
+     *
+     * @param coords clicked tile coordinates
+     */
+    private void handleTilePurchaseClicked(HexTileCoords coords) {
+        if (!(game.getGameMap().getTile(coords) instanceof TerrainTile terrainTile)) {
+            throw new IllegalArgumentException("Tile purchase is only possible on terrain tiles.");
+        }
+        if (!interactionRules.canBuyTerrainTile(terrainTile)) {
+            return;
+        }
+
+        ScreenPosition tilePosition = gameView.getTileScreenPosition(coords);
+        ScreenPosition popupPosition = calculateConfirmationMenuPosition(tilePosition);
+
+        clearTemporaryMenus();
+
+        gameView.showConfirmationMenu(
+                "Buy tile for 50 coins?",
+                popupPosition.x(),
+                popupPosition.y(),
+                () -> confirmTilePurchase(terrainTile),
+                () -> {
+                    gameView.hideConfirmationMenu();
+                    refreshMapLayers();
+                }
+        );
+    }
+    /**
+     * Confirms terrain tile purchase.
+     *
+     * @param terrainTile tile to buy
+     */
+    private void confirmTilePurchase(TerrainTile terrainTile) {
+        Player currentPlayer = game.getCurrentPlayer();
+
+        Unit buyer = null;
+        for (Unit unit : terrainTile.getStandingUnits()) {
+            if (unit.getOwner() == currentPlayer) {
+                buyer = unit;
+                break;
+            }
+        }
+
+        if (buyer == null) {
+            throw new IllegalStateException("Current player has no unit on the tile to buy.");
+        }
+
+        game.captureTerrainTile(buyer, terrainTile);
+
+        gameView.hideConfirmationMenu();
+        refreshView();
+
+        LOGGER.info("Terrain tile {} was bought by player {}.",
+                terrainTile.getTileCoords(),
+                currentPlayer.getDisplayLabel());
+    }
+    /**
+     * Calculates screen position for a confirmation popup near a tile.
+     *
+     * @param tilePosition top-left tile screen position
+     * @return popup position
+     */
+    private ScreenPosition calculateConfirmationMenuPosition(ScreenPosition tilePosition) {
+        double menuWidth = 180;
+        double menuHeight = 110;
+
+        double menuOffsetX = 40;
+        double menuOffsetY = 10;
+        double screenPadding = 12;
+
+        double menuX = tilePosition.x() + menuOffsetX;
+        double menuY = tilePosition.y() + menuOffsetY;
+
+        if (menuX + menuWidth > UIConstants.WINDOW_WIDTH - screenPadding) {
+            menuX = tilePosition.x() - menuWidth + 20;
+        }
+        if (menuY + menuHeight > UIConstants.WINDOW_HEIGHT - screenPadding) {
+            menuY = tilePosition.y() - menuHeight + 50;
+        }
+        if (menuX < screenPadding) {
+            menuX = screenPadding;
+        }
+        if (menuY < screenPadding) {
+            menuY = screenPadding;
+        }
+
+        return new ScreenPosition(menuX, menuY);
     }
 
     /**
@@ -175,13 +286,14 @@ public class GameController {
      */
     private void handleEmptyOrNonInteractiveTileClicked() {
         unitSelection.clear();
-        clearBaseSelection();
+        clearTemporaryMenus();
         refreshMapLayers();
     }
 
     /**
      * Handles click on a tile highlighted as a valid movement target.
-     * Currently supports movement of exactly one selected unit.
+     * Supports movement of one selected unit or two selected units
+     * to the same valid target tile.
      *
      * @param coords clicked target tile coordinates
      */
@@ -191,10 +303,10 @@ public class GameController {
             return;
         }
 
-        clearBaseSelection();
+        clearTemporaryMenus();
 
         if (!(game.getGameMap().getTile(coords) instanceof OccupiableTile tile)) {
-            throw new IllegalArgumentException("Can not move on not occupiable tile");
+            throw new IllegalArgumentException("Cannot move to a non-occupiable tile.");
         }
 
         if (selectedCount == 1) {
@@ -229,7 +341,7 @@ public class GameController {
      * @param coords clicked base tile coordinates
      */
     private void handleBaseClicked(HexTileCoords coords) {
-        clearBaseSelection();
+        clearTemporaryMenus();
         unitSelection.clear();
         refreshMapLayers();
 
@@ -283,12 +395,14 @@ public class GameController {
     }
 
     /**
-     * Clears current base selection and hides the purchase menu.
+     * Clears temporary popup/menu state.
      */
-    private void clearBaseSelection() {
+    private void clearTemporaryMenus() {
         selectedBaseCoords = null;
         gameView.hidePurchaseMenu();
+        gameView.hideConfirmationMenu();
     }
+
 
     /**
      * Updates visible tile highlights according to current selection state.
@@ -316,8 +430,24 @@ public class GameController {
         if (unit == null) {
             return;
         }
-        if (!interactionRules.isUnitInteractive(unit)) {
+
+        HexTileCoords occupiedCoords = unit.getOccupiedTile().getTileCoords();
+
+        if (!interactionRules.isUnitInteractive(unit)
+                && !isPurchasableTile(occupiedCoords)) {
             LOGGER.debug("Ignored click on non-interactive unit {}.", unit);
+            return;
+        }
+
+        if (!shiftHeld
+                && unitSelection.hasSelection()
+                && unitSelection.getSelectedUnits().contains(unit)
+                && isPurchasableTile(occupiedCoords)) {
+            handleTilePurchaseClicked(occupiedCoords);
+            return;
+        }
+
+        if (!interactionRules.isUnitInteractive(unit)) {
             return;
         }
 
@@ -341,7 +471,7 @@ public class GameController {
             }
         }
 
-        clearBaseSelection();
+        clearTemporaryMenus();
 
         LOGGER.info("Selected {} unit(s).", unitSelection.size());
         refreshView();
@@ -361,8 +491,7 @@ public class GameController {
                 game.getCurrentRound()
         );
 
-        // Close temporary UI from the previous turn and redraw map layers.
-        gameView.hidePurchaseMenu();
+        clearTemporaryMenus();
         refreshMapLayers();
     }
 }

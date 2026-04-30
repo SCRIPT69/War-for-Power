@@ -22,7 +22,6 @@ import javafx.scene.image.Image;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.Color;
 
-import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -51,6 +50,10 @@ public class GameMapView {
     private BiConsumer<Unit, Boolean> onUnitClicked;
     private BiFunction<Double, Double, Unit> unitAtResolver;
 
+    private final FlagImageProvider flagImageProvider;
+    private static final double FLAG_WIDTH = 18;
+    private static final double FLAG_HEIGHT = 22;
+
     public GameMapView(GameMap gameMap) {
         this.gameMap = gameMap;
 
@@ -61,6 +64,7 @@ public class GameMapView {
         this.gc = canvas.getGraphicsContext2D();
         this.positionGenerator = new HexTilesPositionGenerator();
         this.terrainImageProvider = new TerrainImageProvider();
+        this.flagImageProvider = new FlagImageProvider();
     }
 
     public Canvas getCanvas() {
@@ -139,8 +143,36 @@ public class GameMapView {
                 if (highlightType != null) {
                     drawTileHighlight(position.x(), position.y(), highlightType);
                 }
+
+                drawOwnerFlagIfNeeded(tile, position.x(), position.y());
             }
         }
+    }
+
+    /**
+     * Draws owner flag on a terrain tile if the tile has an owner.
+     *
+     * @param tile map tile
+     * @param x tile x position
+     * @param y tile y position
+     */
+    private void drawOwnerFlagIfNeeded(HexTile tile, double x, double y) {
+        if (!(tile instanceof TerrainTile terrainTile)) {
+            return;
+        }
+        if (terrainTile.getOwner() == null) {
+            return;
+        }
+
+        Image flagImage = flagImageProvider.getFlagImage(terrainTile.getOwner().getColor());
+        double topLeftX = x + 3;
+        double topLeftY = y + 15;
+
+        double bottomRightX = x + TILE_WIDTH - FLAG_WIDTH - 2;
+        double bottomRightY = y + TILE_HEIGHT - FLAG_HEIGHT - 15;
+
+        gc.drawImage(flagImage, topLeftX, topLeftY, FLAG_WIDTH, FLAG_HEIGHT);
+        gc.drawImage(flagImage, bottomRightX, bottomRightY, FLAG_WIDTH, FLAG_HEIGHT);
     }
 
     /**
