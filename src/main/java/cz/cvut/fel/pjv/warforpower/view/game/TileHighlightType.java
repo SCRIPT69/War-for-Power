@@ -6,6 +6,5 @@ package cz.cvut.fel.pjv.warforpower.view.game;
 public enum TileHighlightType {
     TUTORIAL_BASE,
     MOVE,
-    ATTACK,
-    BUY_TILE
+    ATTACK
 }

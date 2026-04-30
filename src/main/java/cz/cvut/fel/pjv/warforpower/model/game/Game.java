@@ -398,7 +398,10 @@ public class Game {
             currentPlayerIndex++;
 
             if (currentPlayerIndex >= players.length) {
-                endRound();
+                boolean gameEnded = endRound();
+                if (gameEnded) {
+                    return;
+                }
             }
 
             if (!players[currentPlayerIndex].isEliminated()) {
@@ -440,11 +443,13 @@ public class Game {
     /**
      * Finishes the current round, resets round-based temporary states, unit round-action state
      * and awards base income to all active players.
+     *
+     * @return true if the game ended instead of starting a new round
      */
-    private void endRound() {
+    private boolean endRound() {
         if (currentRound == NUMBER_OF_ROUNDS) {
             endGame();
-            return;
+            return true;
         }
         LOGGER.info("Round {} ended.", currentRound);
 
@@ -457,6 +462,8 @@ public class Game {
         currentPlayerIndex = 0;
         currentRound++;
         LOGGER.info("Round {} started.", currentRound);
+
+        return false;
     }
     /**
      * Resets round-based main action state of all units currently present on the map.

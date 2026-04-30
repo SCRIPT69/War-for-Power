@@ -5,11 +5,28 @@ import cz.cvut.fel.pjv.warforpower.model.units.UnitType;
 import javafx.scene.image.Image;
 
 import java.net.URL;
+import java.util.EnumMap;
+import java.util.Map;
 
 /**
  * Provides images used for rendering units on the map.
+ * All unit images are loaded once and then reused.
  */
 public class UnitImageProvider {
+    private final Map<UnitType, Map<PlayerColor, Image>> images =
+            new EnumMap<>(UnitType.class);
+
+    public UnitImageProvider() {
+        for (UnitType unitType : UnitType.values()) {
+            Map<PlayerColor, Image> imagesByColor = new EnumMap<>(PlayerColor.class);
+
+            for (PlayerColor playerColor : PlayerColor.values()) {
+                imagesByColor.put(playerColor, loadImage(unitType, playerColor));
+            }
+
+            images.put(unitType, imagesByColor);
+        }
+    }
 
     /**
      * Returns image corresponding to the specified unit type and owner color.
@@ -19,23 +36,31 @@ public class UnitImageProvider {
      * @return unit image
      */
     public Image getUnitImage(UnitType unitType, PlayerColor playerColor) {
-        String imageUrl = "/img/units/";
-        String color = switch (playerColor) {
-            case RED -> "red";
-            case BLUE -> "blue";
-            case LIGHTBLUE -> "lightblue";
-            case PURPLE -> "purple";
-        };
+        if (unitType == null) {
+            throw new IllegalArgumentException("Unit type cannot be null.");
+        }
+        if (playerColor == null) {
+            throw new IllegalArgumentException("Player color cannot be null.");
+        }
 
-        imageUrl += color + "/" + color + "_";
+        return images.get(unitType).get(playerColor);
+    }
 
-        String unitTypeName = switch (unitType) {
-            case INFANTRY -> "infantry";
-            case ARCHERS -> "archers";
-            case CAVALRY -> "cavalry";
-            case ARTILLERY -> "artillery";
-        };
-        imageUrl += unitTypeName + ".png";
+    /**
+     * Loads a unit image for the specified unit type and player color.
+     *
+     * @param unitType unit type
+     * @param playerColor player color
+     * @return loaded image
+     */
+    private Image loadImage(UnitType unitType, PlayerColor playerColor) {
+        String imageUrl = "/img/units/"
+                + toColorName(playerColor)
+                + "/"
+                + toColorName(playerColor)
+                + "_"
+                + toUnitTypeName(unitType)
+                + ".png";
 
         URL resource = getClass().getResource(imageUrl);
         if (resource == null) {
@@ -43,5 +68,35 @@ public class UnitImageProvider {
         }
 
         return new Image(resource.toExternalForm());
+    }
+
+    /**
+     * Converts player color enum to corresponding resource folder/file name part.
+     *
+     * @param playerColor player color
+     * @return lowercase color name used in resource paths
+     */
+    private String toColorName(PlayerColor playerColor) {
+        return switch (playerColor) {
+            case RED -> "red";
+            case BLUE -> "blue";
+            case LIGHTBLUE -> "lightblue";
+            case PURPLE -> "purple";
+        };
+    }
+
+    /**
+     * Converts unit type enum to corresponding resource file name part.
+     *
+     * @param unitType unit type
+     * @return lowercase unit type name used in resource paths
+     */
+    private String toUnitTypeName(UnitType unitType) {
+        return switch (unitType) {
+            case INFANTRY -> "infantry";
+            case ARCHERS -> "archers";
+            case CAVALRY -> "cavalry";
+            case ARTILLERY -> "artillery";
+        };
     }
 }
