@@ -9,27 +9,34 @@ import javafx.util.Duration;
  * Can be paused during battle and resumed afterward.
  */
 public class TurnTimerService extends ScheduledService<Integer> {
-    private static final int TURN_SECONDS = 60;
+    public static final int TURN_SECONDS = 60;
+
     private int remaining = TURN_SECONDS;
     private boolean paused = false;
 
     public TurnTimerService() {
+        setDelay(Duration.seconds(1));
         setPeriod(Duration.seconds(1));
     }
 
-
-    /** Resets timer to full duration. Call at the start of each turn. */
+    /**
+     * Resets timer to full duration. Call at the start of each turn.
+     */
     public void resetTimer() {
         remaining = TURN_SECONDS;
         paused = false;
     }
 
-    /** Pauses countdown — call when battle starts. */
+    /**
+     * Pauses countdown — call when battle starts.
+     */
     public void pause() {
         paused = true;
     }
 
-    /** Resumes countdown — call when battle ends. */
+    /**
+     * Resumes countdown — call when battle ends.
+     */
     public void resume() {
         paused = false;
     }

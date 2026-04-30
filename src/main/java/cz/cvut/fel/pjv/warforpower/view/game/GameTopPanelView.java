@@ -10,20 +10,27 @@ import javafx.scene.layout.Region;
 
 /**
  * Renders the top HUD panel containing current player info,
- * round number and end-turn controls.
+ * round number, turn timer and end-turn controls.
  */
 public class GameTopPanelView {
-    private final HBox root = new HBox(28);
+    private final HBox root = new HBox();
+
+    private final HBox leftBox = new HBox(20);
+    private final HBox rightBox = new HBox(14);
 
     private final Label currentPlayerLabel = new Label("Player 1");
     private final Label coinsLabel = new Label("Coins: 50");
     private final Label roundLabel = new Label("Round 1");
     private final Button endTurnButton = new Button("End Turn");
+    private final TurnTimerView turnTimerView = new TurnTimerView();
 
     public GameTopPanelView(double width) {
         root.setAlignment(Pos.CENTER_LEFT);
         root.setPrefWidth(width);
         root.setPadding(new Insets(0));
+
+        leftBox.setAlignment(Pos.CENTER_LEFT);
+        rightBox.setAlignment(Pos.CENTER_RIGHT);
 
         currentPlayerLabel.setStyle(
                 "-fx-font-size: 34px;" +
@@ -33,6 +40,17 @@ public class GameTopPanelView {
 
         coinsLabel.setStyle(commonHudLabelStyle());
         roundLabel.setStyle(commonHudLabelStyle());
+
+        currentPlayerLabel.setMinWidth(150);
+        coinsLabel.setMinWidth(140);
+        roundLabel.setMinWidth(150);
+
+        turnTimerView.getRoot().setMinWidth(55);
+        turnTimerView.getRoot().setPrefWidth(55);
+        turnTimerView.getRoot().setMaxWidth(55);
+
+        endTurnButton.setMinWidth(150);
+        endTurnButton.setPrefWidth(150);
 
         applyEndTurnButtonDefaultStyle();
 
@@ -50,12 +68,21 @@ public class GameTopPanelView {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        root.getChildren().addAll(
+        leftBox.getChildren().addAll(
                 currentPlayerLabel,
                 coinsLabel,
-                roundLabel,
-                spacer,
+                roundLabel
+        );
+
+        rightBox.getChildren().addAll(
+                turnTimerView.getRoot(),
                 endTurnButton
+        );
+
+        root.getChildren().addAll(
+                leftBox,
+                spacer,
+                rightBox
         );
     }
 
@@ -131,5 +158,21 @@ public class GameTopPanelView {
         return "-fx-font-size: 32px;" +
                 "-fx-font-weight: bold;" +
                 "-fx-text-fill: #3f2c1b;";
+    }
+
+    /**
+     * Updates displayed remaining turn time.
+     *
+     * @param seconds remaining seconds
+     */
+    public void updateTimer(int seconds) {
+        turnTimerView.updateTime(seconds);
+    }
+
+    /**
+     * Resets displayed timer to default value.
+     */
+    public void resetTimer() {
+        turnTimerView.reset();
     }
 }

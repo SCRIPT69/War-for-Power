@@ -97,6 +97,22 @@ public class GameView {
     }
 
     /**
+     * Updates remaining turn time in the top HUD.
+     *
+     * @param seconds remaining seconds
+     */
+    public void updateTurnTimer(int seconds) {
+        topPanelView.updateTimer(seconds);
+    }
+
+    /**
+     * Resets displayed turn timer to default value.
+     */
+    public void resetTurnTimer() {
+        topPanelView.resetTimer();
+    }
+
+    /**
      * Adds tile highlight of the specified type.
      *
      * @param coords tile coordinates

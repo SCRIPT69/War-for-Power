@@ -15,6 +15,7 @@ import cz.cvut.fel.pjv.warforpower.view.game.GameView;
 
 import cz.cvut.fel.pjv.warforpower.view.game.TileHighlightType;
 import javafx.scene.Parent;
+import javafx.application.Platform;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,8 +70,10 @@ public class GameController {
     private void handleEndTurn() {
         LOGGER.info("End turn requested by user.");
         unitSelection.clear();
+
         game.endTurn();
         refreshView();
+        restartTurnTimer();
     }
 
     /**
@@ -81,7 +84,9 @@ public class GameController {
         LOGGER.info("New game initialization requested from controller.");
 
         bindViewActions();
+        bindTimerActions();
         refreshView();
+        restartTurnTimer();
     }
 
     /**
@@ -125,6 +130,49 @@ public class GameController {
         return isMoveTile(coords)
                 || isInteractiveBaseTile(coords)
                 || isPurchasableTile(coords);
+    }
+
+    /**
+     * Binds timer service events to UI updates and automatic turn ending.
+     */
+    private void bindTimerActions() {
+        timerService.setOnSucceeded(event -> {
+            Integer remaining = timerService.getValue();
+            if (remaining == null) {
+                return;
+            }
+
+            gameView.updateTurnTimer(remaining);
+
+            if (remaining <= 0) {
+                LOGGER.info("Turn timer expired. Ending turn automatically.");
+
+                timerService.cancel();
+
+                Platform.runLater(this::handleEndTurn);
+            }
+        });
+    }
+    /**
+     * Resets and starts countdown for the current turn.
+     */
+    private void restartTurnTimer() {
+        timerService.cancel();
+        timerService.resetTimer();
+        gameView.resetTurnTimer();
+        timerService.restart();
+    }
+    /**
+     * Pauses countdown for the current turn.
+     */
+    private void pauseTurnTimer() {
+        timerService.pause();
+    }
+    /**
+     * Resumes countdown for the current turn.
+     */
+    private void resumeTurnTimer() {
+        timerService.resume();
     }
 
     /**

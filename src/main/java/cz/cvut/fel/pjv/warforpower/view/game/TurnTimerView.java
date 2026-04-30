@@ -1,5 +1,6 @@
 package cz.cvut.fel.pjv.warforpower.view.game;
 
+import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.control.Label;
 import javafx.scene.layout.StackPane;
@@ -12,9 +13,14 @@ public class TurnTimerView {
     private final Label timerLabel = new Label("60");
 
     public TurnTimerView() {
+        root.setMinWidth(60);
+        root.setPrefWidth(60);
+        root.setAlignment(Pos.CENTER);
+
         timerLabel.setStyle(
-                "-fx-font-size: 24px;" +
-                        "-fx-font-weight: bold;"
+                "-fx-font-size: 28px;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-text-fill: #3f2c1b;"
         );
 
         root.getChildren().add(timerLabel);
@@ -25,7 +31,7 @@ public class TurnTimerView {
      *
      * @return root node
      */
-    public Parent getRoot() {
+    public StackPane getRoot() {
         return root;
     }
 
