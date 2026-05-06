@@ -14,6 +14,7 @@ import cz.cvut.fel.pjv.warforpower.view.UIConstants;
 import cz.cvut.fel.pjv.warforpower.view.game.GameView;
 
 import cz.cvut.fel.pjv.warforpower.view.game.TileHighlightType;
+import cz.cvut.fel.pjv.warforpower.view.game.battle.BattleOverlayData;
 import javafx.animation.PauseTransition;
 import javafx.scene.Parent;
 import javafx.application.Platform;
@@ -44,6 +45,7 @@ public class GameController {
     private Map<HexTileCoords, TileHighlightType> currentTileHighlights;
 
     private static final int ATTACK_ENTRY_ANIMATION_MILLIS = 220;
+    private static final int BATTLE_OVERLAY_DELAY_MILLIS = 700;
     private boolean battleInProgress = false;
 
     /**
@@ -315,7 +317,9 @@ public class GameController {
     }
     /**
      * Starts battle flow for the specified attacked tile.
-     * Attackers are rendered on the target tile in battle state.
+     * Attackers first play movement animation into the target tile,
+     * then battle render state is shown, and only after a short delay
+     * the battle overlay is opened.
      *
      * @param coords attacked tile coordinates
      */
@@ -340,16 +344,35 @@ public class GameController {
         refreshMapLayers();
 
         List<Unit> finalDefenders = defenders;
-        PauseTransition delay = new PauseTransition(Duration.millis(ATTACK_ENTRY_ANIMATION_MILLIS));
-        delay.setOnFinished(event -> {
+
+        PauseTransition entryDelay = new PauseTransition(Duration.millis(ATTACK_ENTRY_ANIMATION_MILLIS));
+        entryDelay.setOnFinished(event -> {
             gameView.showBattleState(coords, attackers, finalDefenders);
             refreshMapLayers();
 
             LOGGER.info("Battle state shown on tile {}.", coords);
 
-            // TODO: later connect actual battle controller / battle view
+            boolean defenderIsCity = !(game.getGameMap().getTile(coords) instanceof OccupiableTile);
+
+            BattleOverlayData overlayData = new BattleOverlayData(
+                    "Battle",
+                    "Attackers",
+                    "Defenders",
+                    attackers,
+                    finalDefenders,
+                    defenderIsCity
+            );
+
+            PauseTransition overlayDelay = new PauseTransition(Duration.millis(BATTLE_OVERLAY_DELAY_MILLIS));
+            overlayDelay.setOnFinished(innerEvent -> {
+                gameView.showBattleOverlay(overlayData, () -> {
+                    gameView.hideBattleOverlay();
+                    finishBattleState();
+                });
+            });
+            overlayDelay.play();
         });
-        delay.play();
+        entryDelay.play();
     }
 
     /**

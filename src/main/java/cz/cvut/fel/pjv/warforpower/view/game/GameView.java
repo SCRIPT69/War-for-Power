@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.function.BiConsumer;
 import cz.cvut.fel.pjv.warforpower.view.ScreenPosition;
 import cz.cvut.fel.pjv.warforpower.view.UIConstants;
+import cz.cvut.fel.pjv.warforpower.view.game.battle.BattleOverlayData;
+import cz.cvut.fel.pjv.warforpower.view.game.battle.BattleOverlayView;
 import cz.cvut.fel.pjv.warforpower.view.game.menu.ConfirmationMenuView;
 import cz.cvut.fel.pjv.warforpower.view.game.unit.UnitLayerView;
 import javafx.scene.Parent;
@@ -30,6 +32,7 @@ public class GameView {
             new GameTopPanelView(UIConstants.WINDOW_WIDTH - 80);
     private final UnitPurchaseMenuView purchaseMenuView = new UnitPurchaseMenuView();
     private final ConfirmationMenuView confirmationMenuView = new ConfirmationMenuView();
+    private final BattleOverlayView battleOverlayView = new BattleOverlayView();
     private final GameMap gameMap;
 
     public GameView(GameMap gameMap) {
@@ -43,11 +46,17 @@ public class GameView {
         AnchorPane.setLeftAnchor(topPanelView.getRoot(), 40.0);
         AnchorPane.setRightAnchor(topPanelView.getRoot(), 40.0);
 
+        AnchorPane.setTopAnchor(battleOverlayView.getRoot(), 0.0);
+        AnchorPane.setLeftAnchor(battleOverlayView.getRoot(), 0.0);
+        AnchorPane.setRightAnchor(battleOverlayView.getRoot(), 0.0);
+        AnchorPane.setBottomAnchor(battleOverlayView.getRoot(), 0.0);
+
         root.getChildren().addAll(gameMapView.getCanvas(),
                 unitLayerView.getCanvas(),
                 topPanelView.getRoot(),
                 purchaseMenuView.getRoot(),
-                confirmationMenuView.getRoot());
+                confirmationMenuView.getRoot(),
+                battleOverlayView.getRoot());
     }
 
     public Parent getRoot() {
@@ -56,6 +65,24 @@ public class GameView {
 
     public void renderMap() {
         gameMapView.renderMap();
+    }
+
+    /**
+     * Shows battle overlay with provided data.
+     *
+     * @param data battle overlay data
+     * @param onContinue continue action
+     */
+    public void showBattleOverlay(BattleOverlayData data, Runnable onContinue) {
+        battleOverlayView.setData(data);
+        battleOverlayView.setOnContinue(onContinue);
+        battleOverlayView.show();
+    }
+    /**
+     * Hides battle overlay.
+     */
+    public void hideBattleOverlay() {
+        battleOverlayView.hide();
     }
 
     /**
