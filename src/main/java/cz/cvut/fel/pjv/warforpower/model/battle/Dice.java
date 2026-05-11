@@ -1,5 +1,7 @@
 package cz.cvut.fel.pjv.warforpower.model.battle;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
@@ -10,14 +12,21 @@ public class Dice {
     }
 
     /**
-     * Rolls two six-sided dice.
+     * Rolls the specified number of six-sided dice.
      *
-     * @return result of two dice rolls
+     * @param diceCount number of dice to roll
+     * @return result of the dice rolls
      */
-    public static DiceRoll getTwoDiceResults() {
-        int dice1 = ThreadLocalRandom.current().nextInt(1, 7);
-        int dice2 = ThreadLocalRandom.current().nextInt(1, 7);
+    public static DiceRoll rollDice(int diceCount) {
+        if (diceCount <= 0) {
+            throw new IllegalArgumentException("Dice count must be positive.");
+        }
 
-        return new DiceRoll(dice1, dice2);
+        List<Integer> values = new ArrayList<>();
+        for (int i = 0; i < diceCount; i++) {
+            values.add(ThreadLocalRandom.current().nextInt(1, 7));
+        }
+
+        return new DiceRoll(values);
     }
 }

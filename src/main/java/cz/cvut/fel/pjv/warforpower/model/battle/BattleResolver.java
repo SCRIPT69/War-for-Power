@@ -13,27 +13,95 @@ import java.util.concurrent.ThreadLocalRandom;
  * Resolves battle outcomes between attacking and defending sides.
  */
 public class BattleResolver {
+    private static final int CITY_DICE_COUNT = 2;
 
     /**
      * Resolves a battle between attacking and defending player units.
+     * If the first attempt ends in a draw, one reroll attempt is resolved.
      *
-     * @param attackerUnits attacking units
-     * @param defenderUnits defending units
+     * @param attackingUnits attacking units
+     * @param defendingUnits defending units
      * @param tileOfBattle tile on which the battle takes place
      * @return resolved battle result
      */
     public BattleResult resolvePlayerVsPlayer(
-            List<Unit> attackerUnits,
-            List<Unit> defenderUnits,
+            List<Unit> attackingUnits,
+            List<Unit> defendingUnits,
             OccupiableTile tileOfBattle
     ) {
-        validatePlayerVsPlayerBattle(attackerUnits, defenderUnits, tileOfBattle);
+        validatePlayerVsPlayerBattle(attackingUnits, defendingUnits, tileOfBattle);
 
-        DiceRoll attackerRolls = Dice.getTwoDiceResults();
-        DiceRoll defenderRolls = Dice.getTwoDiceResults();
+        BattleAttemptResult firstAttempt = resolvePlayerVsPlayerAttempt(
+                attackingUnits,
+                defendingUnits,
+                tileOfBattle
+        );
 
-        int attackerBonus = countBonusPoints(attackerUnits, tileOfBattle);
-        int defenderBonus = countBonusPoints(defenderUnits, tileOfBattle);
+        if (!firstAttempt.isDraw()) {
+            return new BattleResult(
+                    tileOfBattle,
+                    firstAttempt,
+                    null,
+                    firstAttempt.battleOutcome()
+            );
+        }
+
+        BattleAttemptResult secondAttempt = resolvePlayerVsPlayerAttempt(
+                attackingUnits,
+                defendingUnits,
+                tileOfBattle
+        );
+
+        return new BattleResult(
+                tileOfBattle,
+                firstAttempt,
+                secondAttempt,
+                secondAttempt.battleOutcome()
+        );
+    }
+
+    /**
+     * Resolves a battle between player units and a city.
+     * If the first attempt ends in a draw, one reroll attempt is resolved.
+     *
+     * @param attackingUnits attacking player units
+     * @param cityTile defending city tile
+     * @return resolved battle result
+     */
+    public BattleResult resolvePlayerVsCity(List<Unit> attackingUnits, CityTile cityTile) {
+        validatePlayerVsCityBattle(attackingUnits, cityTile);
+
+        BattleAttemptResult firstAttempt = resolvePlayerVsCityAttempt(attackingUnits, cityTile);
+
+        if (!firstAttempt.isDraw()) {
+            return new BattleResult(
+                    cityTile,
+                    firstAttempt,
+                    null,
+                    firstAttempt.battleOutcome()
+            );
+        }
+
+        BattleAttemptResult secondAttempt = resolvePlayerVsCityAttempt(attackingUnits, cityTile);
+
+        return new BattleResult(
+                cityTile,
+                firstAttempt,
+                secondAttempt,
+                secondAttempt.battleOutcome()
+        );
+    }
+
+    private BattleAttemptResult resolvePlayerVsPlayerAttempt(
+            List<Unit> attackingUnits,
+            List<Unit> defendingUnits,
+            OccupiableTile tileOfBattle
+    ) {
+        DiceRoll attackerRolls = Dice.rollDice(getDiceCountForUnits(attackingUnits));
+        DiceRoll defenderRolls = Dice.rollDice(getDiceCountForUnits(defendingUnits));
+
+        int attackerBonus = countBonusPoints(attackingUnits, tileOfBattle);
+        int defenderBonus = countBonusPoints(defendingUnits, tileOfBattle);
 
         int attackerTotal = attackerRolls.getSum() + attackerBonus;
         int defenderTotal = defenderRolls.getSum() + defenderBonus;
@@ -41,7 +109,7 @@ public class BattleResolver {
         BattleOutcome battleOutcome = resolveOutcome(attackerTotal, defenderTotal);
 
         List<Unit> attackerLostUnits = resolveLostUnits(
-                attackerUnits,
+                attackingUnits,
                 attackerTotal,
                 defenderTotal,
                 battleOutcome,
@@ -50,7 +118,7 @@ public class BattleResolver {
         );
 
         List<Unit> defenderLostUnits = resolveLostUnits(
-                defenderUnits,
+                defendingUnits,
                 defenderTotal,
                 attackerTotal,
                 battleOutcome,
@@ -59,49 +127,101 @@ public class BattleResolver {
         );
 
         BattleSideResult attackerResult = new BattleSideResult(
-                attackerUnits,
+                attackingUnits,
                 attackerRolls,
                 attackerBonus,
                 attackerLostUnits
         );
 
         BattleSideResult defenderResult = new BattleSideResult(
-                defenderUnits,
+                defendingUnits,
                 defenderRolls,
                 defenderBonus,
                 defenderLostUnits
         );
 
-        return new BattleResult(tileOfBattle, attackerResult, defenderResult, battleOutcome);
+        return new BattleAttemptResult(attackerResult, defenderResult, battleOutcome);
     }
 
-    /**
-     * Resolves a battle between player units and a city.
-     *
-     * @param playerUnits attacking player units
-     * @param cityTile defending city tile
-     * @return resolved battle result
-     */
-    public BattleResult resolvePlayerVsCity(List<Unit> playerUnits, CityTile cityTile) {
-        // TODO: define exact city defense rules
-        return null;
+    private BattleAttemptResult resolvePlayerVsCityAttempt(List<Unit> attackingUnits, CityTile cityTile) {
+        DiceRoll attackerRolls = Dice.rollDice(getDiceCountForUnits(attackingUnits));
+        DiceRoll defenderRolls = Dice.rollDice(CITY_DICE_COUNT);
+
+        int attackerBonus = 0;
+        int defenderBonus = 0;
+
+        int attackerTotal = attackerRolls.getSum() + attackerBonus;
+        int defenderTotal = defenderRolls.getSum() + defenderBonus;
+
+        BattleOutcome battleOutcome = resolveOutcome(attackerTotal, defenderTotal);
+
+        List<Unit> attackerLostUnits = resolveLostUnitsAgainstCity(
+                attackingUnits,
+                attackerTotal,
+                defenderTotal,
+                battleOutcome,
+                cityTile
+        );
+
+        BattleSideResult attackerResult = new BattleSideResult(
+                attackingUnits,
+                attackerRolls,
+                attackerBonus,
+                attackerLostUnits
+        );
+
+        BattleSideResult defenderResult = new BattleSideResult(
+                List.of(),
+                defenderRolls,
+                defenderBonus,
+                List.of()
+        );
+
+        return new BattleAttemptResult(attackerResult, defenderResult, battleOutcome);
     }
 
     private void validatePlayerVsPlayerBattle(
-            List<Unit> attackerUnits,
-            List<Unit> defenderUnits,
+            List<Unit> attackingUnits,
+            List<Unit> defendingUnits,
             OccupiableTile tileOfBattle
     ) {
-        if (attackerUnits == null || attackerUnits.isEmpty()) {
-            throw new IllegalArgumentException("Attacker units cannot be null or empty.");
+        if (attackingUnits == null || attackingUnits.isEmpty()) {
+            throw new IllegalArgumentException("Attacking units cannot be null or empty.");
         }
-        if (defenderUnits == null || defenderUnits.isEmpty()) {
-            throw new IllegalArgumentException("Defender units cannot be null or empty.");
+        if (defendingUnits == null || defendingUnits.isEmpty()) {
+            throw new IllegalArgumentException("Defending units cannot be null or empty.");
         }
         if (tileOfBattle == null) {
             throw new IllegalArgumentException("Tile of battle cannot be null.");
         }
-        // TODO: maybe some more validation rules
+        if (attackingUnits.size() > 2 || defendingUnits.size() > 2) {
+            throw new IllegalArgumentException("Battle supports at most two units per side.");
+        }
+    }
+
+    private void validatePlayerVsCityBattle(List<Unit> attackingUnits, CityTile cityTile) {
+        if (attackingUnits == null || attackingUnits.isEmpty()) {
+            throw new IllegalArgumentException("Attacking units cannot be null or empty.");
+        }
+        if (cityTile == null) {
+            throw new IllegalArgumentException("City tile cannot be null.");
+        }
+        if (attackingUnits.size() > 2) {
+            throw new IllegalArgumentException("Battle supports at most two attacking units.");
+        }
+    }
+
+    private int getDiceCountForUnits(List<Unit> units) {
+        if (units == null || units.isEmpty()) {
+            throw new IllegalArgumentException("Units cannot be null or empty.");
+        }
+        if (units.size() == 1) {
+            return 2;
+        }
+        if (units.size() == 2) {
+            return 4;
+        }
+        throw new IllegalArgumentException("Only 1 or 2 units are supported.");
     }
 
     private int countBonusPoints(List<Unit> units, OccupiableTile tileOfBattle) {
@@ -186,12 +306,47 @@ public class BattleResolver {
     }
 
     /**
-     * Resolves which winning unit is lost after a close victory.
+     * Resolves units lost by the attacking side in a battle against a city.
      *
-     * Priority:
-     * - unit with terrain disadvantage loses first
-     * - if the other unit has terrain advantage, neutral unit loses
-     * - if both units are equal relative to the terrain, one is chosen randomly
+     * @param attackingUnits attacking units
+     * @param attackerTotal attacker total points
+     * @param defenderTotal city total points
+     * @param battleOutcome battle outcome
+     * @param cityTile attacked city
+     * @return lost attacking units
+     */
+    private List<Unit> resolveLostUnitsAgainstCity(
+            List<Unit> attackingUnits,
+            int attackerTotal,
+            int defenderTotal,
+            BattleOutcome battleOutcome,
+            CityTile cityTile
+    ) {
+        List<Unit> lostUnits = new ArrayList<>();
+
+        if (battleOutcome == BattleOutcome.DRAW) {
+            return lostUnits;
+        }
+
+        if (battleOutcome == BattleOutcome.DEFENDER_WIN) {
+            lostUnits.addAll(attackingUnits);
+            return lostUnits;
+        }
+
+        if (attackingUnits.size() == 1) {
+            return lostUnits;
+        }
+
+        int pointDifference = Math.abs(attackerTotal - defenderTotal);
+        if (pointDifference <= 2) {
+            lostUnits.add(chooseRandomUnit(attackingUnits));
+        }
+
+        return lostUnits;
+    }
+
+    /**
+     * Resolves which winning unit is lost after a close victory.
      *
      * @param winningUnits winning side units
      * @param tileOfBattle tile on which the battle takes place

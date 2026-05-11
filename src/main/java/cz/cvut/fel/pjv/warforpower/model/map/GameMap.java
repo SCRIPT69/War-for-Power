@@ -55,6 +55,23 @@ public class GameMap {
     }
 
     /**
+     * Replaces the tile at the specified coordinates with a new tile.
+     *
+     * @param tileCoords coordinates of the tile to replace
+     * @param newTile replacement tile
+     */
+    public void replaceTile(HexTileCoords tileCoords, HexTile newTile) {
+        if (tileCoords == null) {
+            throw new IllegalArgumentException("Tile coordinates cannot be null.");
+        }
+        if (newTile == null) {
+            throw new IllegalArgumentException("New tile cannot be null.");
+        }
+
+        setTile(tileCoords, newTile);
+    }
+
+    /**
      * Returns the tile at the specified coordinates.
      *
      * @param tileCoords coordinates of the tile

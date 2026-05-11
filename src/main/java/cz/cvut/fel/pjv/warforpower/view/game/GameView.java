@@ -71,11 +71,13 @@ public class GameView {
      * Shows battle overlay with provided data.
      *
      * @param data battle overlay data
-     * @param onContinue continue action
+     * @param onClose action invoked after battle overlay closes normally
+     * @param onReroll action invoked when reroll is requested
      */
-    public void showBattleOverlay(BattleOverlayData data, Runnable onContinue) {
+    public void showBattleOverlay(BattleOverlayData data, Runnable onClose, Runnable onReroll) {
         battleOverlayView.setData(data);
-        battleOverlayView.setOnContinue(onContinue);
+        battleOverlayView.setOnClose(onClose);
+        battleOverlayView.setOnReroll(onReroll);
         battleOverlayView.show();
     }
     /**

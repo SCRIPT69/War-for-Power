@@ -1,5 +1,9 @@
 package cz.cvut.fel.pjv.warforpower.controller;
 
+import cz.cvut.fel.pjv.warforpower.model.battle.BattleAttemptResult;
+import cz.cvut.fel.pjv.warforpower.model.battle.BattleOutcome;
+import cz.cvut.fel.pjv.warforpower.model.battle.BattleResult;
+import cz.cvut.fel.pjv.warforpower.model.battle.BattleSideResult;
 import cz.cvut.fel.pjv.warforpower.model.game.Game;
 import cz.cvut.fel.pjv.warforpower.model.players.Player;
 import cz.cvut.fel.pjv.warforpower.model.tiles.BaseTile;
@@ -317,7 +321,7 @@ public class GameController {
     }
     /**
      * Starts battle flow for the specified attacked tile.
-     * Attackers first play movement animation into the target tile,
+     * Attacking units first play movement animation into the target tile,
      * then battle render state is shown, and only after a short delay
      * the battle overlay is opened.
      *
@@ -328,51 +332,133 @@ public class GameController {
             throw new IllegalArgumentException("Battle tile coordinates cannot be null.");
         }
 
-        List<Unit> attackers = List.copyOf(unitSelection.getSelectedUnits());
-        List<Unit> defenders = List.of();
+        List<Unit> attackingUnits = List.copyOf(unitSelection.getSelectedUnits());
+        List<Unit> defendingUnits = List.of();
 
         if (game.getGameMap().getTile(coords) instanceof OccupiableTile occupiableTile) {
-            defenders = List.copyOf(occupiableTile.getStandingUnits());
+            defendingUnits = List.copyOf(occupiableTile.getStandingUnits());
         }
 
-        for (Unit attacker : attackers) {
-            HexTileCoords fromCoords = attacker.getOccupiedTile().getTileCoords();
-            gameView.animateUnitMovement(attacker, fromCoords, coords);
+        for (Unit attackingUnit : attackingUnits) {
+            HexTileCoords fromCoords = attackingUnit.getOccupiedTile().getTileCoords();
+            gameView.animateUnitMovement(attackingUnit, fromCoords, coords);
         }
 
         unitSelection.clear();
         refreshMapLayers();
 
-        List<Unit> finalDefenders = defenders;
+        List<Unit> finalDefendingUnits = defendingUnits;
 
         PauseTransition entryDelay = new PauseTransition(Duration.millis(ATTACK_ENTRY_ANIMATION_MILLIS));
         entryDelay.setOnFinished(event -> {
-            gameView.showBattleState(coords, attackers, finalDefenders);
+            gameView.showBattleState(coords, attackingUnits, finalDefendingUnits);
             refreshMapLayers();
 
             LOGGER.info("Battle state shown on tile {}.", coords);
 
             boolean defenderIsCity = !(game.getGameMap().getTile(coords) instanceof OccupiableTile);
 
-            BattleOverlayData overlayData = new BattleOverlayData(
-                    "Battle",
-                    "Attackers",
-                    "Defenders",
-                    attackers,
-                    finalDefenders,
-                    defenderIsCity
-            );
+            try {
+                BattleResult battleResult = game.resolveBattle(attackingUnits, coords);
 
-            PauseTransition overlayDelay = new PauseTransition(Duration.millis(BATTLE_OVERLAY_DELAY_MILLIS));
-            overlayDelay.setOnFinished(innerEvent -> {
-                gameView.showBattleOverlay(overlayData, () -> {
-                    gameView.hideBattleOverlay();
-                    finishBattleState();
+                BattleOverlayData firstAttempt = mapBattleAttemptToOverlayData(
+                        battleResult.firstAttempt(),
+                        defenderIsCity,
+                        battleResult.hasSecondAttempt()
+                );
+
+                BattleOverlayData secondAttempt = battleResult.hasSecondAttempt()
+                        ? mapBattleAttemptToOverlayData(
+                        battleResult.secondAttempt(),
+                        defenderIsCity,
+                        false
+                )
+                        : null;
+
+                PauseTransition overlayDelay = new PauseTransition(Duration.millis(BATTLE_OVERLAY_DELAY_MILLIS));
+                overlayDelay.setOnFinished(innerEvent -> {
+                    gameView.showBattleOverlay(
+                            firstAttempt,
+                            () -> {
+                                game.applyBattleResult(battleResult);
+                                gameView.hideBattleOverlay();
+                                finishBattleState();
+                            },
+                            () -> {
+                                if (secondAttempt == null) {
+                                    game.applyBattleResult(battleResult);
+                                    gameView.hideBattleOverlay();
+                                    finishBattleState();
+                                    return;
+                                }
+
+                                gameView.showBattleOverlay(
+                                        secondAttempt,
+                                        () -> {
+                                            game.applyBattleResult(battleResult);
+                                            gameView.hideBattleOverlay();
+                                            finishBattleState();
+                                        },
+                                        () -> {
+                                            game.applyBattleResult(battleResult);
+                                            gameView.hideBattleOverlay();
+                                            finishBattleState();
+                                        }
+                                );
+                            }
+                    );
                 });
-            });
-            overlayDelay.play();
+                overlayDelay.play();
+            } catch (IllegalArgumentException | IllegalStateException | UnsupportedOperationException e) {
+                LOGGER.warn("Battle resolution failed: {}", e.getMessage());
+                finishBattleState();
+            }
         });
         entryDelay.play();
+    }
+    /**
+     * Maps resolved model battle attempt to current battle overlay data.
+     *
+     * @param battleAttempt resolved battle attempt
+     * @param defenderIsCity true if defending side represents a city
+     * @param canReroll true if one more reroll is available after this attempt
+     * @return overlay data for current UI
+     */
+    private BattleOverlayData mapBattleAttemptToOverlayData(
+            BattleAttemptResult battleAttempt,
+            boolean defenderIsCity,
+            boolean canReroll
+    ) {
+        if (battleAttempt == null) {
+            throw new IllegalArgumentException("Battle attempt cannot be null.");
+        }
+
+        BattleSideResult attackerResult = battleAttempt.attackerResult();
+        BattleSideResult defenderResult = battleAttempt.defenderResult();
+
+        String resultText = switch (battleAttempt.battleOutcome()) {
+            case ATTACKER_WIN -> "Attackers win";
+            case DEFENDER_WIN -> "Defenders win";
+            case DRAW -> "Draw";
+        };
+
+        return new BattleOverlayData(
+                "Battle",
+                "Attackers",
+                "Defenders",
+                attackerResult.units(),
+                defenderResult.units(),
+                defenderIsCity,
+                attackerResult.rolls().values(),
+                defenderResult.rolls().values(),
+                attackerResult.bonusPoints(),
+                defenderResult.bonusPoints(),
+                attackerResult.getTotalPoints(),
+                defenderResult.getTotalPoints(),
+                resultText,
+                battleAttempt.battleOutcome() == BattleOutcome.DRAW,
+                canReroll
+        );
     }
 
     /**

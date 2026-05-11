@@ -1,5 +1,9 @@
 package cz.cvut.fel.pjv.warforpower.model.game;
 
+import cz.cvut.fel.pjv.warforpower.model.battle.BattleAttemptResult;
+import cz.cvut.fel.pjv.warforpower.model.battle.BattleOutcome;
+import cz.cvut.fel.pjv.warforpower.model.battle.BattleResolver;
+import cz.cvut.fel.pjv.warforpower.model.battle.BattleResult;
 import cz.cvut.fel.pjv.warforpower.model.map.GameMap;
 import cz.cvut.fel.pjv.warforpower.model.players.Player;
 import cz.cvut.fel.pjv.warforpower.model.players.PlayersFactory;
@@ -35,6 +39,7 @@ public class Game {
     private final GameMap gameMap;
     private final ScoreCalculator scoreCalculator;
     private final UnitActionTilesResolver unitActionTilesResolver;
+    private final BattleResolver battleResolver;
 
     private int currentRound = 0;
 
@@ -72,6 +77,7 @@ public class Game {
         this.gameMap = new GameMap();
         this.scoreCalculator = new ScoreCalculator();
         this.unitActionTilesResolver = new UnitActionTilesResolver(this);
+        this.battleResolver = new BattleResolver();
     }
 
     /**
@@ -324,12 +330,31 @@ public class Game {
 
         Player previousOwner = baseTile.getOwner();
         previousOwner.decreaseBasesCount();
-        newOwner.increaseBasesCount();
-        baseTile.setOwner(newOwner);
-        baseTile.markUnitBoughtThisRound(); // player can not buy units on the new base in the current round
+
+        assignBaseToOwner(newOwner, baseTile);
 
         LOGGER.info("Player {} captured enemy base at {}.",
                 newOwner.getDisplayLabel(), baseTile.getTileCoords());
+    }
+
+    /**
+     * Assigns base ownership to the specified player and marks the base
+     * as unavailable for recruitment in the current round.
+     *
+     * @param newOwner new base owner
+     * @param baseTile base tile
+     */
+    private void assignBaseToOwner(Player newOwner, BaseTile baseTile) {
+        if (newOwner == null) {
+            throw new IllegalArgumentException("New owner cannot be null.");
+        }
+        if (baseTile == null) {
+            throw new IllegalArgumentException("Base tile cannot be null.");
+        }
+
+        baseTile.setOwner(newOwner);
+        baseTile.markUnitBoughtThisRound();
+        newOwner.increaseBasesCount();
     }
 
     /**
@@ -371,6 +396,240 @@ public class Game {
 
         LOGGER.info("Player {} captured tile {}.",
                 owner.getDisplayLabel(), tile.getTileCoords());
+    }
+
+    /**
+     * Resolves battle for the specified attacking units and target tile.
+     * Attacking units consume their main action only after the battle
+     * is successfully resolved.
+     *
+     * @param attackingUnits attacking units
+     * @param targetCoords coordinates of the attacked tile
+     * @return resolved battle result
+     */
+    public BattleResult resolveBattle(List<Unit> attackingUnits, HexTileCoords targetCoords) {
+        if (attackingUnits == null || attackingUnits.isEmpty()) {
+            throw new IllegalArgumentException("Attacking units cannot be null or empty.");
+        }
+        if (targetCoords == null) {
+            throw new IllegalArgumentException("Target coordinates cannot be null.");
+        }
+
+        validateAttackingUnitsForBattle(attackingUnits);
+
+        HexTile targetTile = gameMap.getTile(targetCoords);
+
+        if (attackingUnits.size() == 1) {
+            Unit attackingUnit = attackingUnits.getFirst();
+
+            if (!getAttackOptions(attackingUnit).contains(targetTile)) {
+                throw new IllegalStateException("Invalid target tile for attack.");
+            }
+        } else if (attackingUnits.size() == 2) {
+            Unit firstUnit = attackingUnits.getFirst();
+            Unit secondUnit = attackingUnits.get(1);
+
+            if (!getSharedAttackOptions(firstUnit, secondUnit).contains(targetTile)) {
+                throw new IllegalStateException("Invalid target tile for shared attack.");
+            }
+        } else {
+            throw new IllegalStateException("Only 1 or 2 attacking units are supported.");
+        }
+
+        BattleResult battleResult;
+
+        if (targetTile instanceof OccupiableTile occupiableTile) {
+            if (!occupiableTile.hasUnits()) {
+                throw new IllegalStateException("Target occupiable tile has no defending units.");
+            }
+
+            battleResult = battleResolver.resolvePlayerVsPlayer(
+                    attackingUnits,
+                    occupiableTile.getStandingUnits(),
+                    occupiableTile
+            );
+        } else if (targetTile instanceof CityTile cityTile) {
+            battleResult = battleResolver.resolvePlayerVsCity(attackingUnits, cityTile);
+            if (battleResult == null) {
+                throw new UnsupportedOperationException("City battle is not implemented yet.");
+            }
+        } else {
+            throw new IllegalStateException("Unsupported battle target tile.");
+        }
+
+        for (Unit attackingUnit : attackingUnits) {
+            attackingUnit.markUsedMainActionThisRound();
+        }
+
+        return battleResult;
+    }
+    /**
+     * Validates attacking units before battle resolution.
+     *
+     * @param attackingUnits attacking units
+     */
+    private void validateAttackingUnitsForBattle(List<Unit> attackingUnits) {
+        Player owner = attackingUnits.getFirst().getOwner();
+
+        for (Unit attackingUnit : attackingUnits) {
+            if (attackingUnit == null) {
+                throw new IllegalArgumentException("Attacking unit cannot be null.");
+            }
+            if (attackingUnit.getOwner() != owner) {
+                throw new IllegalStateException("All attacking units must belong to the same player.");
+            }
+            if (attackingUnit.getOwner().isEliminated()) {
+                throw new IllegalStateException("Eliminated player cannot attack.");
+            }
+            if (attackingUnit.getOwner() != currentPlayer) {
+                throw new IllegalStateException("Only current player's units can attack.");
+            }
+            if (attackingUnit.hasUsedMainActionThisRound()) {
+                throw new IllegalStateException("Attacking unit has already used its main action this round.");
+            }
+        }
+    }
+
+    /**
+     * Applies final battle result to the game state.
+     *
+     * Losing units are removed from the map.
+     * If attackers win, surviving attackers move to the battle tile.
+     * If the battle was for a city and attackers win, the city is converted to a base.
+     *
+     * @param battleResult resolved battle result
+     */
+    public void applyBattleResult(BattleResult battleResult) {
+        if (battleResult == null) {
+            throw new IllegalArgumentException("Battle result cannot be null.");
+        }
+
+        BattleAttemptResult finalAttempt = battleResult.hasSecondAttempt()
+                ? battleResult.secondAttempt()
+                : battleResult.firstAttempt();
+
+        removeUnits(finalAttempt.attackerResult().lostUnits());
+        removeUnits(finalAttempt.defenderResult().lostUnits());
+
+        if (battleResult.finalOutcome() == BattleOutcome.DRAW) {
+            LOGGER.info("Battle at {} ended in a draw.", battleResult.tileOfBattle().getTileCoords());
+            return;
+        }
+
+        if (battleResult.finalOutcome() == BattleOutcome.DEFENDER_WIN) {
+            LOGGER.info("Defenders won the battle at {}.", battleResult.tileOfBattle().getTileCoords());
+            return;
+        }
+
+        List<Unit> survivingAttackers = getSurvivingUnits(
+                finalAttempt.attackerResult().units(),
+                finalAttempt.attackerResult().lostUnits()
+        );
+
+        if (survivingAttackers.isEmpty()) {
+            throw new IllegalStateException("Attackers won, but no surviving attackers remain.");
+        }
+
+        Player newOwner = survivingAttackers.getFirst().getOwner();
+
+        OccupiableTile destinationTile;
+        if (battleResult.tileOfBattle() instanceof CityTile cityTile) {
+            destinationTile = convertCityToBase(cityTile, newOwner);
+        } else if (battleResult.tileOfBattle() instanceof OccupiableTile occupiableTile) {
+            destinationTile = occupiableTile;
+        } else {
+            throw new IllegalStateException("Unsupported battle destination tile.");
+        }
+
+        moveUnitsToBattleTile(survivingAttackers, destinationTile);
+
+        if (destinationTile instanceof BaseTile baseTile && baseTile.getOwner() != newOwner) {
+            captureBase(newOwner, baseTile);
+        }
+
+        LOGGER.info("Attackers won the battle at {}.", battleResult.tileOfBattle().getTileCoords());
+    }
+    /**
+     * Removes units from their current occupied tiles.
+     *
+     * @param units units to remove
+     */
+    private void removeUnits(List<Unit> units) {
+        for (Unit unit : units) {
+            if (unit == null) {
+                throw new IllegalStateException("Battle result contains null unit.");
+            }
+
+            OccupiableTile occupiedTile = unit.getOccupiedTile();
+            if (occupiedTile == null) {
+                throw new IllegalStateException("Unit to remove is not placed on any tile.");
+            }
+            occupiedTile.removeUnit(unit);
+        }
+    }
+    /**
+     * Returns units that survived the battle.
+     *
+     * @param units all participating units
+     * @param lostUnits units lost in the battle
+     * @return surviving units
+     */
+    private List<Unit> getSurvivingUnits(List<Unit> units, List<Unit> lostUnits) {
+        List<Unit> survivingUnits = new ArrayList<>();
+
+        for (Unit unit : units) {
+            if (!lostUnits.contains(unit)) {
+                survivingUnits.add(unit);
+            }
+        }
+
+        return survivingUnits;
+    }
+    /**
+     * Moves surviving attacking units from their original tiles
+     * to the destination battle tile.
+     *
+     * @param units surviving attacking units
+     * @param destinationTile destination tile
+     */
+    private void moveUnitsToBattleTile(List<Unit> units, OccupiableTile destinationTile) {
+        for (Unit unit : units) {
+            OccupiableTile oldTile = unit.getOccupiedTile();
+            if (oldTile != null) {
+                oldTile.removeUnit(unit);
+            }
+
+            destinationTile.addUnit(unit);
+            unit.setOccupiedTile(destinationTile);
+        }
+    }
+
+    /**
+     * Converts the specified city tile into a new base owned by the given player.
+     * Newly captured base cannot recruit units in the current round.
+     *
+     * @param cityTile city tile to convert
+     * @param newOwner owner of the new base
+     * @return newly created base tile
+     */
+    private BaseTile convertCityToBase(CityTile cityTile, Player newOwner) {
+        if (cityTile == null) {
+            throw new IllegalArgumentException("City tile cannot be null.");
+        }
+        if (newOwner == null) {
+            throw new IllegalArgumentException("New owner cannot be null.");
+        }
+
+        BaseTile newBase = new BaseTile(cityTile.getTileCoords(), newOwner);
+        assignBaseToOwner(newOwner, newBase);
+
+        gameMap.replaceTile(cityTile.getTileCoords(), newBase);
+
+        LOGGER.info("City at {} was converted into a base of player {}.",
+                cityTile.getTileCoords(),
+                newOwner.getDisplayLabel());
+
+        return newBase;
     }
 
     /**
