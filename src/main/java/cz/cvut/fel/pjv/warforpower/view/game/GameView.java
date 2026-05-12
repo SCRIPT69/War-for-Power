@@ -1,6 +1,7 @@
 package cz.cvut.fel.pjv.warforpower.view.game;
 
 import cz.cvut.fel.pjv.warforpower.model.map.GameMap;
+import cz.cvut.fel.pjv.warforpower.model.score.GameScoreResult;
 import cz.cvut.fel.pjv.warforpower.model.tiles.HexTileCoords;
 import cz.cvut.fel.pjv.warforpower.model.units.UnitType;
 import cz.cvut.fel.pjv.warforpower.model.units.Unit;
@@ -11,6 +12,7 @@ import cz.cvut.fel.pjv.warforpower.view.UIConstants;
 import cz.cvut.fel.pjv.warforpower.view.game.battle.BattleOverlayData;
 import cz.cvut.fel.pjv.warforpower.view.game.battle.BattleOverlayView;
 import cz.cvut.fel.pjv.warforpower.view.game.menu.ConfirmationMenuView;
+import cz.cvut.fel.pjv.warforpower.view.endgame.EndGameMenuView;
 import cz.cvut.fel.pjv.warforpower.view.game.unit.UnitLayerView;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
@@ -33,6 +35,7 @@ public class GameView {
     private final UnitPurchaseMenuView purchaseMenuView = new UnitPurchaseMenuView();
     private final ConfirmationMenuView confirmationMenuView = new ConfirmationMenuView();
     private final BattleOverlayView battleOverlayView = new BattleOverlayView();
+    private final EndGameMenuView endGameMenuView = new EndGameMenuView();
     private final GameMap gameMap;
 
     public GameView(GameMap gameMap) {
@@ -51,12 +54,18 @@ public class GameView {
         AnchorPane.setRightAnchor(battleOverlayView.getRoot(), 0.0);
         AnchorPane.setBottomAnchor(battleOverlayView.getRoot(), 0.0);
 
+        AnchorPane.setTopAnchor(endGameMenuView.getRoot(), 0.0);
+        AnchorPane.setLeftAnchor(endGameMenuView.getRoot(), 0.0);
+        AnchorPane.setRightAnchor(endGameMenuView.getRoot(), 0.0);
+        AnchorPane.setBottomAnchor(endGameMenuView.getRoot(), 0.0);
+
         root.getChildren().addAll(gameMapView.getCanvas(),
                 unitLayerView.getCanvas(),
                 topPanelView.getRoot(),
                 purchaseMenuView.getRoot(),
                 confirmationMenuView.getRoot(),
-                battleOverlayView.getRoot());
+                battleOverlayView.getRoot(),
+                endGameMenuView.getRoot());
     }
 
     public Parent getRoot() {
@@ -123,6 +132,20 @@ public class GameView {
 
     public ScreenPosition getTileScreenPosition(HexTileCoords coords) {
         return gameMapView.getTileScreenPosition(coords);
+    }
+
+    /**
+     * Displays the end-game menu with final scores and winners.
+     *
+     * @param result final calculated game score result
+     * @param onBackToMenu action invoked when the player chooses to exit the game
+     */
+    public void showEndGameMenu(GameScoreResult result, Runnable onBackToMenu) {
+        hidePurchaseMenu();
+        hideConfirmationMenu();
+        hideBattleOverlay();
+
+        endGameMenuView.show(result, onBackToMenu);
     }
 
     /**

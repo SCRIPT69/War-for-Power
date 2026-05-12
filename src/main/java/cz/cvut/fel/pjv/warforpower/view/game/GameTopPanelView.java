@@ -15,8 +15,8 @@ import javafx.scene.layout.Region;
 public class GameTopPanelView {
     private final HBox root = new HBox();
 
-    private final HBox leftBox = new HBox(20);
-    private final HBox rightBox = new HBox(14);
+    private final HBox leftBox = new HBox(12);
+    private final HBox rightBox = new HBox(8);
 
     private final Label currentPlayerLabel = new Label("Player 1");
     private final Label coinsLabel = new Label("Coins: 50");
@@ -41,16 +41,17 @@ public class GameTopPanelView {
         coinsLabel.setStyle(commonHudLabelStyle());
         roundLabel.setStyle(commonHudLabelStyle());
 
-        currentPlayerLabel.setMinWidth(150);
-        coinsLabel.setMinWidth(140);
-        roundLabel.setMinWidth(150);
+        currentPlayerLabel.setMinWidth(165);
+        coinsLabel.setMinWidth(165);
+        roundLabel.setMinWidth(155);
 
-        turnTimerView.getRoot().setMinWidth(55);
-        turnTimerView.getRoot().setPrefWidth(55);
-        turnTimerView.getRoot().setMaxWidth(55);
+        turnTimerView.getRoot().setMinWidth(50);
+        turnTimerView.getRoot().setPrefWidth(50);
+        turnTimerView.getRoot().setMaxWidth(50);
 
         endTurnButton.setMinWidth(150);
         endTurnButton.setPrefWidth(150);
+        endTurnButton.setMaxWidth(150);
 
         applyEndTurnButtonDefaultStyle();
 
@@ -111,7 +112,7 @@ public class GameTopPanelView {
                         "-fx-text-fill: " + playerColorCss + ";"
         );
 
-        coinsLabel.setText("Coins: " + coins);
+        coinsLabel.setText("Coins " + coins);
         roundLabel.setText("Round " + round);
     }
 
@@ -127,7 +128,7 @@ public class GameTopPanelView {
                         "-fx-border-width: 2;" +
                         "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.28), 8, 0.2, 0, 2);" +
                         "-fx-cursor: hand;" +
-                        "-fx-padding: 10 22 10 22;"
+                        "-fx-padding: 10 14 10 14;"
         );
     }
 
@@ -143,7 +144,7 @@ public class GameTopPanelView {
                         "-fx-border-width: 2;" +
                         "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.35), 10, 0.22, 0, 3);" +
                         "-fx-cursor: hand;" +
-                        "-fx-padding: 10 22 10 22;"
+                        "-fx-padding: 10 14 10 14;"
         );
     }
 
@@ -159,12 +160,12 @@ public class GameTopPanelView {
                         "-fx-border-width: 2;" +
                         "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.18), 4, 0.15, 0, 1);" +
                         "-fx-cursor: hand;" +
-                        "-fx-padding: 11 22 9 22;"
+                        "-fx-padding: 11 14 9 14;"
         );
     }
 
     private String commonHudLabelStyle() {
-        return "-fx-font-size: 32px;" +
+        return "-fx-font-size: 30px;" +
                 "-fx-font-weight: bold;" +
                 "-fx-text-fill: #3f2c1b;";
     }

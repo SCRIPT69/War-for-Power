@@ -22,7 +22,7 @@ public class SceneManager {
     }
 
     public void openGameScene(int selectedPlayersCount) {
-        GameController gameController = new GameController(selectedPlayersCount);
+        GameController gameController = new GameController(selectedPlayersCount, this);
         Scene scene = new Scene(gameController.getGameViewRoot(), UIConstants.WINDOW_WIDTH, UIConstants.WINDOW_HEIGHT);
         stage.setScene(scene);
         gameController.startNewGame();

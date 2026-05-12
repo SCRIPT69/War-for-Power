@@ -13,6 +13,7 @@ import cz.cvut.fel.pjv.warforpower.model.tiles.TerrainTile;
 import cz.cvut.fel.pjv.warforpower.model.units.UnitType;
 import cz.cvut.fel.pjv.warforpower.model.units.Unit;
 import cz.cvut.fel.pjv.warforpower.view.PlayerColorCssMapper;
+import cz.cvut.fel.pjv.warforpower.view.SceneManager;
 import cz.cvut.fel.pjv.warforpower.view.ScreenPosition;
 import cz.cvut.fel.pjv.warforpower.view.UIConstants;
 import cz.cvut.fel.pjv.warforpower.view.game.GameView;
@@ -41,6 +42,7 @@ public class GameController {
     private HexTileCoords selectedBaseCoords;
     private final InteractionRules interactionRules;
     private final UnitSelection unitSelection;
+    private final SceneManager sceneManager;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GameController.class);
 
@@ -57,7 +59,12 @@ public class GameController {
      *
      * @param playersNumber number of players
      */
-    public GameController(int playersNumber) {
+    public GameController(int playersNumber, SceneManager sceneManager) {
+        if (sceneManager == null) {
+            throw new IllegalArgumentException("Scene manager cannot be null.");
+        }
+
+        this.sceneManager = sceneManager;
         this.game = new Game(playersNumber);
         this.gameView = new GameView(game.getGameMap());
         this.interactionRules = new InteractionRules(this.game);
@@ -89,8 +96,33 @@ public class GameController {
         unitSelection.clear();
 
         game.endTurn();
+
+        if (game.isGameEnded()) {
+            showEndGameMenu();
+            return;
+        }
+
         refreshView();
         restartTurnTimer();
+    }
+
+    /**
+     * Stops active turn flow and displays the final game result menu.
+     */
+    private void showEndGameMenu() {
+        timerService.cancel();
+        battleInProgress = false;
+        unitSelection.clear();
+        clearTemporaryMenus();
+
+        gameView.setEndTurnButtonDisabled(true);
+
+        gameView.showEndGameMenu(
+                game.getFinalScoreResult(),
+                () -> sceneManager.openMenuScene()
+        );
+
+        LOGGER.info("End game menu shown.");
     }
 
     /**

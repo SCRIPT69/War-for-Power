@@ -42,10 +42,25 @@ public class Game {
     private final UnitActionTilesResolver unitActionTilesResolver;
     private final BattleResolver battleResolver;
 
+    private boolean gameEnded = false;
+    private GameScoreResult finalScoreResult;
+
     private int currentRound = 0;
 
     public int getPlayersNumber() {
         return playersNumber;
+    }
+
+    public boolean isGameEnded() {
+        return gameEnded;
+    }
+
+    public GameScoreResult getFinalScoreResult() {
+        if (!gameEnded || finalScoreResult == null) {
+            throw new IllegalStateException("Game has not ended yet.");
+        }
+
+        return finalScoreResult;
     }
 
     /**
@@ -752,16 +767,21 @@ public class Game {
 
     /**
      * Ends the game and prepares final score evaluation and end-game handling.
-     * The full end-game flow is intended to be completed in later implementation stages.
      */
     public void endGame() {
-        //GameScoreResult gameScoreResult = calculateFinalScore();
-        //and other logic
+        if (gameEnded) {
+            return;
+        }
+
+        gameEnded = true;
+        finalScoreResult = scoreCalculator.calculateGameResult(gameMap, players);
+
         LOGGER.info("Game ended.");
-        GameScoreResult gameScoreResult = scoreCalculator.calculateGameResult(gameMap, players);
-        for (ScoreResult result : gameScoreResult.playerScores()) {
-            System.out.println(result.player().getName());
-            System.out.println(result.getTotalPoints());
+
+        for (ScoreResult result : finalScoreResult.playerScores()) {
+            LOGGER.info("Player {} final score: {}.",
+                    result.player().getDisplayLabel(),
+                    result.getTotalPoints());
         }
     }
 
