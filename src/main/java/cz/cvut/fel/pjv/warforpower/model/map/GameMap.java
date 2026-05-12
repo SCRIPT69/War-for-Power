@@ -15,8 +15,8 @@ import java.util.List;
  */
 public class GameMap {
     private final List<List<HexTile>> map;
-    private static final int[] ROW_LENGTHS = {5, 6, 7, 8, 9, 8, 7, 6, 5};
-    private static final int ROWS_NUMBER = ROW_LENGTHS.length;
+    public static final int[] ROW_LENGTHS = {5, 6, 7, 8, 9, 8, 7, 6, 5};
+    public static final int ROWS_NUMBER = ROW_LENGTHS.length;
     private static final int TILES_PER_TERRAIN_TYPE = 14;
 
     public GameMap() {

@@ -9,6 +9,7 @@ import cz.cvut.fel.pjv.warforpower.model.players.Player;
 import cz.cvut.fel.pjv.warforpower.model.players.PlayersFactory;
 import cz.cvut.fel.pjv.warforpower.model.score.GameScoreResult;
 import cz.cvut.fel.pjv.warforpower.model.score.ScoreCalculator;
+import cz.cvut.fel.pjv.warforpower.model.score.ScoreResult;
 import cz.cvut.fel.pjv.warforpower.model.tiles.*;
 import cz.cvut.fel.pjv.warforpower.model.units.Unit;
 import cz.cvut.fel.pjv.warforpower.model.units.UnitType;
@@ -756,6 +757,11 @@ public class Game {
         //GameScoreResult gameScoreResult = calculateFinalScore();
         //and other logic
         LOGGER.info("Game ended.");
+        GameScoreResult gameScoreResult = scoreCalculator.calculateGameResult(gameMap, players);
+        for (ScoreResult result : gameScoreResult.playerScores()) {
+            System.out.println(result.player().getName());
+            System.out.println(result.getTotalPoints());
+        }
     }
 
     /**

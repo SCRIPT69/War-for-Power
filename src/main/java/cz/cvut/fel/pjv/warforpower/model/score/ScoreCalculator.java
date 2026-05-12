@@ -2,9 +2,12 @@ package cz.cvut.fel.pjv.warforpower.model.score;
 
 import cz.cvut.fel.pjv.warforpower.model.map.GameMap;
 import cz.cvut.fel.pjv.warforpower.model.players.Player;
+import cz.cvut.fel.pjv.warforpower.model.tiles.*;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
 
 /**
  * Calculates final game score of all players based on owned bases
@@ -63,8 +66,49 @@ public class ScoreCalculator {
      * @return points from connected owned tiles
      */
     private int countConnectedTilePoints(GameMap gameMap, Player player) {
-        // TODO: BFS/DFS from all player's bases through ownable tiles owned by the same player.
-        return 0;
+        // Using multi-source BFS(Breadth-First Search) algorithm
+
+        List<List<Boolean>> markedTiles = new ArrayList<>();
+        for (int i = 0; i < GameMap.ROWS_NUMBER; i++) {
+            List<Boolean> markedTilesRow = new ArrayList<>();
+            for (int j = 0; j < GameMap.ROW_LENGTHS[i]; j++) {
+                markedTilesRow.add(false);
+            }
+
+            markedTiles.add(markedTilesRow);
+        }
+
+        int result = 0;
+        Queue<HexTileCoords> queue = new ArrayDeque<>();
+
+        for (BaseTile base : gameMap.getBasesOfPlayer(player)) {
+            HexTileCoords baseCoords = base.getTileCoords();
+
+            queue.offer(baseCoords);
+            markedTiles.get(baseCoords.rowIndex())
+                    .set(baseCoords.tileIndex(), true);
+        }
+
+        while (!queue.isEmpty()) {
+            HexTileCoords currentTileCoords = queue.poll();
+            if (!(gameMap.getTile(currentTileCoords) instanceof BaseTile)) {
+                result += POINTS_PER_CONNECTED_TILE;
+            }
+
+            for (OccupiableTile neighbourTile : gameMap.getNeighbourOccupiableTiles(currentTileCoords)) {
+                HexTileCoords neighbourCoords = neighbourTile.getTileCoords();
+
+                if (markedTiles.get(neighbourCoords.rowIndex()).get(neighbourCoords.tileIndex())) {
+                    continue;
+                }
+                if (neighbourTile instanceof Ownable ownableTile && ownableTile.getOwner() == player) {
+                    queue.offer(neighbourCoords);
+                    markedTiles.get(neighbourCoords.rowIndex()).set(neighbourCoords.tileIndex(), true);
+                }
+            }
+        }
+
+        return result;
     }
 
     /**
