@@ -135,8 +135,8 @@ public class Game {
         if (owner.getMoney() < unitType.getPrice()) {
             throw new IllegalStateException("Not enough money for buying the unit.");
         }
-        if (baseTile.isUnitBoughtThisRound()) {
-            throw new IllegalStateException("A unit has already been bought on this base this round.");
+        if (!baseTile.canBuyUnitThisRound()) {
+            throw new IllegalStateException("A unit cannot be bought on this base this round.");
         }
         if (baseTile.isFull()) {
             throw new IllegalStateException("The base is already full for creating a new unit.");
@@ -354,7 +354,8 @@ public class Game {
         }
 
         baseTile.setOwner(newOwner);
-        baseTile.markUnitBoughtThisRound();
+        // A base captured during this round cannot be used for buying units
+        baseTile.markCapturedThisRound();
         newOwner.increaseBasesCount();
     }
 
@@ -714,7 +715,7 @@ public class Game {
         LOGGER.info("Round {} ended.", currentRound);
 
         for (BaseTile base : gameMap.getAllBases()) {
-            base.resetRoundPurchaseState();
+            base.resetRoundState();
         }
         resetUnitsRoundActionState();
         increasePlayersMoneyForBases();

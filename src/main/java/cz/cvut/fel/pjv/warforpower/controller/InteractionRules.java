@@ -3,13 +3,9 @@ package cz.cvut.fel.pjv.warforpower.controller;
 import cz.cvut.fel.pjv.warforpower.model.game.Game;
 import cz.cvut.fel.pjv.warforpower.model.players.Player;
 import cz.cvut.fel.pjv.warforpower.model.tiles.BaseTile;
-import cz.cvut.fel.pjv.warforpower.model.tiles.HexTile;
-import cz.cvut.fel.pjv.warforpower.model.tiles.OccupiableTile;
 import cz.cvut.fel.pjv.warforpower.model.tiles.TerrainTile;
 import cz.cvut.fel.pjv.warforpower.model.units.Unit;
 import cz.cvut.fel.pjv.warforpower.model.units.UnitType;
-
-import java.util.List;
 
 /**
  * Encapsulates rules deciding whether game objects are currently interactive.
@@ -38,7 +34,7 @@ public class InteractionRules {
         if (baseTile.getOwner() != game.getCurrentPlayer()) {
             return false;
         }
-        if (baseTile.isUnitBoughtThisRound()) {
+        if (!baseTile.canBuyUnitThisRound()) {
             return false;
         }
         if (baseTile.isFull()) {
