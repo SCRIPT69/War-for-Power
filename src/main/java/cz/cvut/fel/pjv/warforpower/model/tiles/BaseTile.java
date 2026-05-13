@@ -78,4 +78,33 @@ public class BaseTile extends OccupiableTile implements Ownable {
         unitBoughtThisRound = false;
         capturedThisRound = false;
     }
+
+    /**
+     * Returns whether a unit has been bought on this base during the current round.
+     *
+     * @return true if a unit was bought on this base this round
+     */
+    public boolean hasUnitBoughtThisRound() {
+        return unitBoughtThisRound;
+    }
+    /**
+     * Returns whether this base has been captured during the current round.
+     *
+     * @return true if this base was captured this round
+     */
+    public boolean hasBeenCapturedThisRound() {
+        return capturedThisRound;
+    }
+    /**
+     * Restores round-specific state of this base from a saved snapshot.
+     *
+     * This method should only be used during game loading, not during normal gameplay.
+     *
+     * @param unitBoughtThisRound saved unit-bought flag
+     * @param capturedThisRound saved captured flag
+     */
+    public void restoreRoundState(boolean unitBoughtThisRound, boolean capturedThisRound) {
+        this.unitBoughtThisRound = unitBoughtThisRound;
+        this.capturedThisRound = capturedThisRound;
+    }
 }

@@ -3,6 +3,9 @@ package cz.cvut.fel.pjv.warforpower.model.map;
 import cz.cvut.fel.pjv.warforpower.model.players.Player;
 import cz.cvut.fel.pjv.warforpower.model.tiles.*;
 import cz.cvut.fel.pjv.warforpower.model.units.Unit;
+import cz.cvut.fel.pjv.warforpower.model.units.UnitType;
+import cz.cvut.fel.pjv.warforpower.save.TileSnapshot;
+import cz.cvut.fel.pjv.warforpower.save.UnitSnapshot;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -21,6 +24,101 @@ public class GameMap {
 
     public GameMap() {
         this.map = new ArrayList<>();
+    }
+
+    /**
+     * Restores map tiles and units from saved snapshot data.
+     *
+     * @param tileSnapshots saved tile states
+     * @param unitSnapshots saved unit states
+     * @param players restored players array
+     */
+    public void restoreFromSnapshot(
+            List<TileSnapshot> tileSnapshots,
+            List<UnitSnapshot> unitSnapshots,
+            Player[] players
+    ) {
+        if (tileSnapshots == null) {
+            throw new IllegalArgumentException("Tile snapshots cannot be null.");
+        }
+        if (unitSnapshots == null) {
+            throw new IllegalArgumentException("Unit snapshots cannot be null.");
+        }
+        if (players == null) {
+            throw new IllegalArgumentException("Players cannot be null.");
+        }
+
+        initializeEmptyMap();
+
+        for (TileSnapshot tileSnapshot : tileSnapshots) {
+            HexTileCoords coords = new HexTileCoords(
+                    tileSnapshot.rowIndex(),
+                    tileSnapshot.tileIndex()
+            );
+
+            HexTile tile = switch (tileSnapshot.tileType()) {
+                case "TERRAIN" -> {
+                    TerrainTile terrainTile = new TerrainTile(
+                            coords,
+                            TerrainType.valueOf(tileSnapshot.terrainType())
+                    );
+
+                    if (tileSnapshot.ownerIndex() != null) {
+                        terrainTile.setOwner(players[tileSnapshot.ownerIndex()]);
+                    }
+
+                    yield terrainTile;
+                }
+
+                case "BASE" -> {
+                    Player owner = tileSnapshot.ownerIndex() != null
+                            ? players[tileSnapshot.ownerIndex()]
+                            : null;
+
+                    BaseTile baseTile = new BaseTile(coords, owner);
+
+                    baseTile.restoreRoundState(
+                            tileSnapshot.unitBoughtThisRound(),
+                            tileSnapshot.capturedThisRound()
+                    );
+
+                    yield baseTile;
+                }
+
+                case "CITY" -> new CityTile(coords);
+
+                default -> throw new IllegalArgumentException(
+                        "Unknown tile type: " + tileSnapshot.tileType()
+                );
+            };
+
+            replaceTile(coords, tile);
+        }
+
+        for (UnitSnapshot unitSnapshot : unitSnapshots) {
+            HexTileCoords coords = new HexTileCoords(
+                    unitSnapshot.rowIndex(),
+                    unitSnapshot.tileIndex()
+            );
+
+            if (!(getTile(coords) instanceof OccupiableTile occupiableTile)) {
+                throw new IllegalStateException("Saved unit is placed on non-occupiable tile: " + coords);
+            }
+
+            Player owner = players[unitSnapshot.ownerIndex()];
+
+            Unit unit = new Unit(
+                    UnitType.valueOf(unitSnapshot.unitType()),
+                    owner,
+                    occupiableTile
+            );
+
+            if (unitSnapshot.mainActionUsed()) {
+                unit.markUsedMainActionThisRound();
+            }
+
+            occupiableTile.addUnit(unit);
+        }
     }
 
     /**

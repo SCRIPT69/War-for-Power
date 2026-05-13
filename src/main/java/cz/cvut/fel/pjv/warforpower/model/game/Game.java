@@ -6,6 +6,7 @@ import cz.cvut.fel.pjv.warforpower.model.battle.BattleResolver;
 import cz.cvut.fel.pjv.warforpower.model.battle.BattleResult;
 import cz.cvut.fel.pjv.warforpower.model.map.GameMap;
 import cz.cvut.fel.pjv.warforpower.model.players.Player;
+import cz.cvut.fel.pjv.warforpower.model.players.PlayerColor;
 import cz.cvut.fel.pjv.warforpower.model.players.PlayersFactory;
 import cz.cvut.fel.pjv.warforpower.model.score.GameScoreResult;
 import cz.cvut.fel.pjv.warforpower.model.score.ScoreCalculator;
@@ -16,6 +17,9 @@ import cz.cvut.fel.pjv.warforpower.model.units.UnitType;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import cz.cvut.fel.pjv.warforpower.save.GameSnapshot;
+import cz.cvut.fel.pjv.warforpower.save.PlayerSnapshot;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,6 +81,24 @@ public class Game {
     }
 
     /**
+     * Returns all players participating in the game.
+     *
+     * @return players array
+     */
+    public Player[] getPlayers() {
+        return players;
+    }
+
+    /**
+     * Returns index of the current active player.
+     *
+     * @return current player index
+     */
+    public int getCurrentPlayerIndex() {
+        return currentPlayerIndex;
+    }
+
+    /**
      * Creates a new game instance for the given number of players.
      *
      * @param playersNumber number of players
@@ -103,6 +125,56 @@ public class Game {
      */
     public GameMap getGameMap() {
         return gameMap;
+    }
+
+    /**
+     * Restores complete game state from a saved snapshot.
+     *
+     * This method is used only when loading a saved game. It restores players,
+     * map state, units, current round and current active player.
+     *
+     * @param snapshot saved game snapshot
+     */
+    public void restoreFromSnapshot(GameSnapshot snapshot) {
+        if (snapshot == null) {
+            throw new IllegalArgumentException("Game snapshot cannot be null.");
+        }
+        if (snapshot.players().size() != players.length) {
+            throw new IllegalStateException("Saved players count does not match game players count.");
+        }
+
+        for (int i = 0; i < players.length; i++) {
+            PlayerSnapshot playerSnapshot = snapshot.players().get(i);
+
+            players[i] = new Player(
+                    playerSnapshot.name(),
+                    PlayerColor.valueOf(playerSnapshot.color()),
+                    playerSnapshot.money()
+            );
+
+            for (int baseIndex = 0; baseIndex < playerSnapshot.basesCount(); baseIndex++) {
+                players[i].increaseBasesCount();
+            }
+
+            if (playerSnapshot.eliminated()) {
+                players[i].setEliminated(true);
+            }
+        }
+
+        gameMap.restoreFromSnapshot(snapshot.tiles(), snapshot.units(), players);
+
+        currentRound = snapshot.currentRound();
+        currentPlayerIndex = snapshot.currentPlayerIndex();
+
+        if (currentPlayerIndex < 0 || currentPlayerIndex >= players.length) {
+            throw new IllegalStateException("Saved current player index is invalid.");
+        }
+
+        currentPlayer = players[currentPlayerIndex];
+
+        LOGGER.info("Game state restored from snapshot. Round: {}, Player: {}.",
+                currentRound,
+                currentPlayer.getDisplayLabel());
     }
 
     /**
@@ -467,9 +539,6 @@ public class Game {
             );
         } else if (targetTile instanceof CityTile cityTile) {
             battleResult = battleResolver.resolvePlayerVsCity(attackingUnits, cityTile);
-            if (battleResult == null) {
-                throw new UnsupportedOperationException("City battle is not implemented yet.");
-            }
         } else {
             throw new IllegalStateException("Unsupported battle target tile.");
         }

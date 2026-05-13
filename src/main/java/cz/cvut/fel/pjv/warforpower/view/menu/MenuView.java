@@ -1,5 +1,7 @@
 package cz.cvut.fel.pjv.warforpower.view.menu;
 
+import cz.cvut.fel.pjv.warforpower.model.game.Game;
+import cz.cvut.fel.pjv.warforpower.save.SaveManager;
 import cz.cvut.fel.pjv.warforpower.view.SceneManager;
 import cz.cvut.fel.pjv.warforpower.view.UIConstants;
 import javafx.geometry.Insets;
@@ -20,9 +22,11 @@ public class MenuView {
     private final SceneManager sceneManager;
     private final StackPane root = new StackPane();
     private int selectedPlayersCount = 2;
+    private final boolean hasSave;
 
-    public MenuView(SceneManager sceneManager) {
+    public MenuView(SceneManager sceneManager, boolean hasSave) {
         this.sceneManager = sceneManager;
+        this.hasSave = hasSave;
 
         Canvas canvas = new Canvas(UIConstants.WINDOW_WIDTH, UIConstants.WINDOW_HEIGHT);
         GraphicsContext gc = canvas.getGraphicsContext2D();
@@ -43,7 +47,7 @@ public class MenuView {
         VBox menuBox = new VBox(20);
         menuBox.setAlignment(Pos.CENTER);
         menuBox.setMaxWidth(300);
-        menuBox.setMaxHeight(400);
+        menuBox.setMaxHeight(450);
 
         menuBox.getStyleClass().add("root-menu-panel");
 
@@ -52,7 +56,6 @@ public class MenuView {
 
         Label selectedLabel = new Label("Selected: 2 players");
         selectedLabel.getStyleClass().add("menu-secondary-label");
-
 
         Button twoPlayersButton = new Button("2 Players");
         twoPlayersButton.getStyleClass().add("player-button");
@@ -91,14 +94,29 @@ public class MenuView {
             this.sceneManager.openGameScene(this.selectedPlayersCount);
         });
 
-
         menuBox.getChildren().addAll(
                 selectLabel,
                 selectedLabel,
                 twoPlayersButton,
                 threePlayersButton,
                 fourPlayersButton,
-                startButton);
+                startButton
+        );
+
+        if (hasSave) {
+            Button continueButton = new Button("Continue");
+            continueButton.getStyleClass().add("primary-button");
+
+            continueButton.setOnAction(event -> {
+                Game loadedGame = SaveManager.load();
+
+                if (loadedGame != null) {
+                    sceneManager.openGameScene(loadedGame);
+                }
+            });
+
+            menuBox.getChildren().add(continueButton);
+        }
 
         VBox.setMargin(startButton, new Insets(15, 0, 0, 0));
 

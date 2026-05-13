@@ -12,6 +12,7 @@ import cz.cvut.fel.pjv.warforpower.model.tiles.OccupiableTile;
 import cz.cvut.fel.pjv.warforpower.model.tiles.TerrainTile;
 import cz.cvut.fel.pjv.warforpower.model.units.UnitType;
 import cz.cvut.fel.pjv.warforpower.model.units.Unit;
+import cz.cvut.fel.pjv.warforpower.save.SaveManager;
 import cz.cvut.fel.pjv.warforpower.view.PlayerColorCssMapper;
 import cz.cvut.fel.pjv.warforpower.view.SceneManager;
 import cz.cvut.fel.pjv.warforpower.view.ScreenPosition;
@@ -75,6 +76,46 @@ public class GameController {
     }
 
     /**
+     * Creates a controller for a restored game.
+     *
+     * @param game restored game instance
+     * @param sceneManager scene manager used for navigation between scenes
+     */
+    public GameController(Game game, SceneManager sceneManager) {
+        if (game == null) {
+            throw new IllegalArgumentException("Game cannot be null.");
+        }
+        if (sceneManager == null) {
+            throw new IllegalArgumentException("Scene manager cannot be null.");
+        }
+
+        this.sceneManager = sceneManager;
+        this.game = game;
+        this.gameView = new GameView(game.getGameMap());
+        this.interactionRules = new InteractionRules(this.game);
+        this.unitSelection = new UnitSelection();
+        this.timerService = new TurnTimerService();
+        this.tileHighlightResolver = new SelectionTileHighlightResolver(game);
+        this.currentTileHighlights = new HashMap<>();
+    }
+
+    /**
+     * Initializes view and timer for a game loaded from a save file.
+     *
+     * This method does not create a new game or generate a new map.
+     * It only binds controller actions to the existing restored game state
+     * and renders the current saved state.
+     */
+    public void startLoadedGame() {
+        LOGGER.info("Loaded game initialization requested from controller.");
+
+        bindViewActions();
+        bindTimerActions();
+        refreshView();
+        restartTurnTimer();
+    }
+
+    /**
      * Returns the root node of the game view.
      *
      * @return root UI node
@@ -98,9 +139,12 @@ public class GameController {
         game.endTurn();
 
         if (game.isGameEnded()) {
+            SaveManager.deleteSave();
             showEndGameMenu();
             return;
         }
+
+        SaveManager.save(game);
 
         refreshView();
         restartTurnTimer();
