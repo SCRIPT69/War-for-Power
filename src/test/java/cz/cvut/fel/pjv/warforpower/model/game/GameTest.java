@@ -3,7 +3,6 @@ package cz.cvut.fel.pjv.warforpower.model.game;
 import cz.cvut.fel.pjv.warforpower.model.players.Player;
 import cz.cvut.fel.pjv.warforpower.model.score.GameScoreResult;
 import cz.cvut.fel.pjv.warforpower.model.tiles.BaseTile;
-import cz.cvut.fel.pjv.warforpower.model.tiles.HexTileCoords;
 import cz.cvut.fel.pjv.warforpower.model.tiles.OccupiableTile;
 import cz.cvut.fel.pjv.warforpower.model.units.Unit;
 import cz.cvut.fel.pjv.warforpower.model.units.UnitType;
