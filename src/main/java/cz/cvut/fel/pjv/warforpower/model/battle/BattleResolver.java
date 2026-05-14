@@ -92,13 +92,21 @@ public class BattleResolver {
         );
     }
 
+    /**
+     * Resolves one battle attempt between two player-controlled sides.
+     *
+     * @param attackingUnits attacking units
+     * @param defendingUnits defending units
+     * @param tileOfBattle tile on which the battle takes place
+     * @return resolved result of one battle attempt
+     */
     private BattleAttemptResult resolvePlayerVsPlayerAttempt(
             List<Unit> attackingUnits,
             List<Unit> defendingUnits,
             OccupiableTile tileOfBattle
     ) {
-        DiceRoll attackerRolls = Dice.rollDice(getDiceCountForUnits(attackingUnits));
-        DiceRoll defenderRolls = Dice.rollDice(getDiceCountForUnits(defendingUnits));
+        DiceRoll attackerRolls = rollDice(getDiceCountForUnits(attackingUnits));
+        DiceRoll defenderRolls = rollDice(getDiceCountForUnits(defendingUnits));
 
         int attackerBonus = countBonusPoints(attackingUnits, tileOfBattle);
         int defenderBonus = countBonusPoints(defendingUnits, tileOfBattle);
@@ -143,9 +151,16 @@ public class BattleResolver {
         return new BattleAttemptResult(attackerResult, defenderResult, battleOutcome);
     }
 
+    /**
+     * Resolves one battle attempt between player units and a city.
+     *
+     * @param attackingUnits attacking units
+     * @param cityTile defending city
+     * @return resolved result of one battle attempt
+     */
     private BattleAttemptResult resolvePlayerVsCityAttempt(List<Unit> attackingUnits, CityTile cityTile) {
-        DiceRoll attackerRolls = Dice.rollDice(getDiceCountForUnits(attackingUnits));
-        DiceRoll defenderRolls = Dice.rollDice(CITY_DICE_COUNT);
+        DiceRoll attackerRolls = rollDice(getDiceCountForUnits(attackingUnits));
+        DiceRoll defenderRolls = rollDice(CITY_DICE_COUNT);
 
         int attackerBonus = 0;
         int defenderBonus = 0;
@@ -159,8 +174,7 @@ public class BattleResolver {
                 attackingUnits,
                 attackerTotal,
                 defenderTotal,
-                battleOutcome,
-                cityTile
+                battleOutcome
         );
 
         BattleSideResult attackerResult = new BattleSideResult(
@@ -180,6 +194,24 @@ public class BattleResolver {
         return new BattleAttemptResult(attackerResult, defenderResult, battleOutcome);
     }
 
+    /**
+     * Rolls the specified number of dice.
+     * Can be overridden in tests to provide deterministic rolls.
+     *
+     * @param diceCount number of dice to roll
+     * @return rolled dice values
+     */
+    protected DiceRoll rollDice(int diceCount) {
+        return Dice.rollDice(diceCount);
+    }
+
+    /**
+     * Validates a player-vs-player battle before resolution.
+     *
+     * @param attackingUnits attacking units
+     * @param defendingUnits defending units
+     * @param tileOfBattle tile of battle
+     */
     private void validatePlayerVsPlayerBattle(
             List<Unit> attackingUnits,
             List<Unit> defendingUnits,
@@ -199,6 +231,12 @@ public class BattleResolver {
         }
     }
 
+    /**
+     * Validates a player-vs-city battle before resolution.
+     *
+     * @param attackingUnits attacking units
+     * @param cityTile defending city
+     */
     private void validatePlayerVsCityBattle(List<Unit> attackingUnits, CityTile cityTile) {
         if (attackingUnits == null || attackingUnits.isEmpty()) {
             throw new IllegalArgumentException("Attacking units cannot be null or empty.");
@@ -211,6 +249,14 @@ public class BattleResolver {
         }
     }
 
+    /**
+     * Returns the number of dice rolled by the specified unit group.
+     *
+     * One unit rolls two dice, two units roll four dice.
+     *
+     * @param units participating units
+     * @return number of dice to roll
+     */
     private int getDiceCountForUnits(List<Unit> units) {
         if (units == null || units.isEmpty()) {
             throw new IllegalArgumentException("Units cannot be null or empty.");
@@ -224,6 +270,15 @@ public class BattleResolver {
         throw new IllegalArgumentException("Only 1 or 2 units are supported.");
     }
 
+    /**
+     * Counts total terrain bonus points of the specified units on the given tile.
+     *
+     * Non-terrain tiles provide no terrain bonuses.
+     *
+     * @param units participating units
+     * @param tileOfBattle tile on which the battle takes place
+     * @return total bonus points
+     */
     private int countBonusPoints(List<Unit> units, OccupiableTile tileOfBattle) {
         if (!(tileOfBattle instanceof TerrainTile terrainTile)) {
             return 0;
@@ -237,6 +292,13 @@ public class BattleResolver {
         return bonus;
     }
 
+    /**
+     * Resolves battle outcome from total points of both sides.
+     *
+     * @param attackerTotal attacker total points
+     * @param defenderTotal defender total points
+     * @return resolved battle outcome
+     */
     private BattleOutcome resolveOutcome(int attackerTotal, int defenderTotal) {
         if (attackerTotal > defenderTotal) {
             return BattleOutcome.ATTACKER_WIN;
@@ -312,15 +374,13 @@ public class BattleResolver {
      * @param attackerTotal attacker total points
      * @param defenderTotal city total points
      * @param battleOutcome battle outcome
-     * @param cityTile attacked city
      * @return lost attacking units
      */
     private List<Unit> resolveLostUnitsAgainstCity(
             List<Unit> attackingUnits,
             int attackerTotal,
             int defenderTotal,
-            BattleOutcome battleOutcome,
-            CityTile cityTile
+            BattleOutcome battleOutcome
     ) {
         List<Unit> lostUnits = new ArrayList<>();
 
@@ -347,6 +407,10 @@ public class BattleResolver {
 
     /**
      * Resolves which winning unit is lost after a close victory.
+     *
+     * If the battle tile provides terrain modifiers, the unit with the lower
+     * terrain modifier is lost first. If both units have the same modifier,
+     * one unit is chosen randomly.
      *
      * @param winningUnits winning side units
      * @param tileOfBattle tile on which the battle takes place
@@ -377,6 +441,12 @@ public class BattleResolver {
         return chooseRandomUnit(winningUnits);
     }
 
+    /**
+     * Chooses one random unit from the specified list.
+     *
+     * @param units available units
+     * @return randomly chosen unit
+     */
     private Unit chooseRandomUnit(List<Unit> units) {
         int randomIndex = ThreadLocalRandom.current().nextInt(units.size());
         return units.get(randomIndex);
