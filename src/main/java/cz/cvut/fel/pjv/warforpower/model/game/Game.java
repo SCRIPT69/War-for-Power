@@ -853,13 +853,4 @@ public class Game {
                     result.getTotalPoints());
         }
     }
-
-    /**
-     * Calculates final score results of all players.
-     *
-     * @return final game score result
-     */
-    public GameScoreResult calculateFinalScore() {
-        return scoreCalculator.calculateGameResult(gameMap, players);
-    }
 }
